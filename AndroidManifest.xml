@@ -15,9 +15,10 @@
 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          android:sharedUserId="com.android.car.dialermessenger.uid.shared"
     package="com.android.car.dialer">
 
-    <uses-sdk android:minSdkVersion="23" android:targetSdkVersion='23'/>
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion='24'/>
 
     <uses-permission android:name="android.permission.BLUETOOTH"/>
     <uses-permission android:name="android.permission.READ_CALL_LOG"/>
@@ -33,12 +34,16 @@
 
         <activity android:name=".TelecomActivity"
             android:launchMode="singleInstance"
-            android:theme="@style/CarDrawerActivityTheme"
+            android:theme="@style/TelecomActivityTheme"
             android:label="@string/phone_app_name"
             android:exported="true"
             android:resizeableActivity="true">
             <intent-filter>
                 <action android:name="android.intent.action.DIAL"/>
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.CALL"/>
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <intent-filter>
@@ -53,7 +58,24 @@
             </intent-filter>
         </activity>
 
-        <service android:name="com.android.car.dialer.telecom.embedded.InCallServiceImpl"
+        <activity android:name=".ContactSearchActivity"
+            android:label="@string/phone_app_name"
+            android:theme="@style/ContactSearchActivityTheme"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:resizeableActivity="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="com.android.car.dialer.SHOW_CONTACT_DETAILS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <service android:name="com.android.car.dialer.telecom.InCallServiceImpl"
                  android:permission="android.permission.BIND_INCALL_SERVICE"
                  android:exported="true">
             <meta-data android:name="android.telecom.IN_CALL_SERVICE_UI" android:value="true" />
@@ -61,13 +83,5 @@
                 <action android:name="android.telecom.InCallService"/>
             </intent-filter>
         </service>
-
-        <receiver android:name=".bluetooth.BluetoothBroadcastReceiver">
-            <intent-filter>
-                <action android:name="android.bluetooth.headsetclient.profile.action.CONNECTION_STATE_CHANGED"/>
-                <action android:name="android.bluetooth.adapter.action.STATE_CHANGED"/>
-                <action android:name="android.bluetooth.device.action.BOND_STATE_CHANGED"/>
-            </intent-filter>
-        </receiver>
     </application>
 </manifest>
