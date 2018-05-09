@@ -49,8 +49,7 @@ import java.util.stream.Stream;
  * <li>StrequentFragment
  * </ul>
  */
-public class TelecomActivity extends CarDrawerActivity implements
-        DialerFragment.DialerBackButtonListener, CallListener {
+public class TelecomActivity extends CarDrawerActivity implements CallListener {
     private static final String TAG = "TelecomActivity";
 
     private static final String ACTION_ANSWER_CALL = "com.android.car.dialer.ANSWER_CALL";
@@ -91,7 +90,7 @@ public class TelecomActivity extends CarDrawerActivity implements
         getWindow().getDecorView().setBackgroundColor(getColor(R.color.phone_theme));
         setTitle(getString(R.string.phone_app_name));
 
-        mUiCallManager = new UiCallManager(this);
+        mUiCallManager = UiCallManager.init(getApplicationContext());
         mUiBluetoothMonitor = new UiBluetoothMonitor(this);
 
         findViewById(R.id.search).setOnClickListener(
@@ -105,6 +104,7 @@ public class TelecomActivity extends CarDrawerActivity implements
             Log.d(TAG, "onDestroy");
         }
         mUiBluetoothMonitor.tearDown();
+        mUiCallManager.tearDown();
         mUiCallManager = null;
     }
 
@@ -293,24 +293,12 @@ public class TelecomActivity extends CarDrawerActivity implements
             return;
         }
 
-        Fragment fragment =
-                DialerFragment.newInstance(mUiCallManager, this /* listener */, dialNumber);
-
-        if (Log.isLoggable(TAG, Log.VERBOSE)) {
-            Log.v(TAG, "adding dialer to fragment backstack");
-        }
+        Fragment fragment = DialerFragment.newInstance(dialNumber);
 
         // Add the dialer fragment to the backstack so that it can be popped off to dismiss it.
         getSupportFragmentManager().beginTransaction()
-                .setCustomAnimations(R.anim.telecom_slide_in, R.anim.telecom_slide_out,
-                        R.anim.telecom_slide_in, R.anim.telecom_slide_out)
-                .add(R.id.content_fragment_container, fragment, DIALER_FRAGMENT_TAG)
-                .addToBackStack(DIALER_BACKSTACK)
+                .replace(R.id.content_fragment_container, fragment, DIALER_FRAGMENT_TAG)
                 .commit();
-
-        if (Log.isLoggable(TAG, Log.VERBOSE)) {
-            Log.v(TAG, "done adding fragment to backstack");
-        }
     }
 
     /**
@@ -322,11 +310,6 @@ public class TelecomActivity extends CarDrawerActivity implements
         if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
             getSupportFragmentManager().popBackStack();
         }
-    }
-
-    @Override
-    public void onDialerBackClick() {
-        maybeHideDialer();
     }
 
     private void showNoHfpFragment(@StringRes int stringResId) {
@@ -498,10 +481,12 @@ public class TelecomActivity extends CarDrawerActivity implements
     }
 
     private class DialerRootAdapter extends CarDrawerAdapter {
-        private static final int ITEM_DIAL = 0;
+        private static final int ITEM_FAVORITES = 0;
         private static final int ITEM_CALLLOG_ALL = 1;
         private static final int ITEM_CALLLOG_MISSED = 2;
-        private static final int ITEM_MAX = 3;
+        private static final int ITEM_DIAL = 3;
+
+        private static final int ITEM_COUNT = 4;
 
         DialerRootAdapter() {
             super(TelecomActivity.this, false /* showDisabledListOnEmpty */);
@@ -510,7 +495,7 @@ public class TelecomActivity extends CarDrawerActivity implements
 
         @Override
         protected int getActualItemCount() {
-            return ITEM_MAX;
+            return ITEM_COUNT;
         }
 
         @Override
@@ -528,7 +513,11 @@ public class TelecomActivity extends CarDrawerActivity implements
                     break;
                 case ITEM_CALLLOG_MISSED:
                     textResId = R.string.calllog_missed;
-                    iconResId = R.drawable.ic_drawer_call_missed;
+                    iconResId = R.drawable.ic_call_missed;
+                    break;
+                case ITEM_FAVORITES:
+                    textResId = R.string.calllog_favorites;
+                    iconResId = R.drawable.ic_favorite;
                     break;
                 default:
                     Log.wtf(TAG, "Unexpected position: " + position);
@@ -552,6 +541,9 @@ public class TelecomActivity extends CarDrawerActivity implements
                     break;
                 case ITEM_CALLLOG_MISSED:
                     showCallHistory(PhoneLoader.CallType.MISSED_TYPE);
+                    break;
+                case ITEM_FAVORITES:
+                    showSpeedDialFragment();
                     break;
                 default:
                     Log.w(TAG, "Invalid position in ROOT menu! " + position);
