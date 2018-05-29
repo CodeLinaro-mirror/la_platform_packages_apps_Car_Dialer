@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,11 +40,11 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.android.car.apps.common.CircleBitmapDrawable;
 import com.android.car.apps.common.FabDrawable;
 import com.android.car.dialer.telecom.TelecomUtils;
 import com.android.car.dialer.telecom.UiCall;
 import com.android.car.dialer.telecom.UiCallManager;
+import com.android.car.dialer.ui.CircleBitmapDrawable;
 
 import java.util.Arrays;
 import java.util.List;
@@ -53,6 +53,7 @@ import java.util.Objects;
 /**
  * A fragment that displays information about an on-going call with options to hang up.
  */
+@Deprecated
 public class OngoingCallFragment extends Fragment implements CallListener {
     private static final String TAG = "OngoingCall";
     private static final SparseArray<Character> mDialpadButtonMap = new SparseArray<>();
