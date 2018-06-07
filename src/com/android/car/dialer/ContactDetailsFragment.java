@@ -15,17 +15,17 @@
  */
 package com.android.car.dialer;
 
-import android.app.Fragment;
-import android.app.LoaderManager;
-import android.content.CursorLoader;
 import android.content.Intent;
-import android.content.Loader;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.support.annotation.ColorInt;
 import android.support.annotation.Nullable;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.Pair;
@@ -36,7 +36,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.android.car.dialer.telecom.TelecomUtils;
-import com.android.car.view.CardListBackgroundResolver;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,7 +71,9 @@ public class ContactDetailsFragment extends Fragment
     public static ContactDetailsFragment newInstance(Uri uri,
             @Nullable RecyclerView.OnScrollListener listener) {
         ContactDetailsFragment fragment = new ContactDetailsFragment();
-        fragment.addOnScrollListener(listener);
+        if (listener != null) {
+            fragment.addOnScrollListener(listener);
+        }
 
         Bundle args = new Bundle();
         args.putParcelable(KEY_URI, uri);
@@ -169,6 +170,7 @@ public class ContactDetailsFragment extends Fragment
         public TextView title;
         public TextView text;
         public ImageView avatar;
+        public View divier;
 
         public ContactDetailViewHolder(View v) {
             super(v);
@@ -177,6 +179,7 @@ public class ContactDetailsFragment extends Fragment
             title = v.findViewById(R.id.title);
             text = v.findViewById(R.id.text);
             avatar = v.findViewById(R.id.avatar);
+            divier = v.findViewById(R.id.divider);
         }
     }
 
@@ -209,7 +212,8 @@ public class ContactDetailsFragment extends Fragment
             }
 
             // Fetch the phone number from the contacts db using another loader.
-            getLoaderManager().initLoader(PHONE_LOADER_QUERY_ID, null,
+            LoaderManager.getInstance(ContactDetailsFragment.this).initLoader(PHONE_LOADER_QUERY_ID,
+                    null,
                     new LoaderManager.LoaderCallbacks<Cursor>() {
                         @Override
                         public Loader<Cursor> onCreateLoader(int id, Bundle args) {
@@ -319,8 +323,43 @@ public class ContactDetailsFragment extends Fragment
                     Log.e(TAG, "Unknown view type " + viewHolder.getItemViewType());
                     return;
             }
-            CardListBackgroundResolver.setBackground(viewHolder.card,
+
+            if (position == (getItemCount() - 1)) {
+                // hide divider for last item.
+                viewHolder.divier.setVisibility(View.GONE);
+            } else {
+                viewHolder.divier.setVisibility(View.VISIBLE);
+            }
+            setBackground(viewHolder.card,
                     viewHolder.getAdapterPosition(), getItemCount());
+        }
+    }
+
+    private void setBackground(View view, int currentPosition, int totalItems) {
+        if (currentPosition < 0) {
+            throw new IllegalArgumentException("currentPosition cannot be less than zero.");
+        }
+
+        if (currentPosition >= totalItems) {
+            throw new IndexOutOfBoundsException("currentPosition: " + currentPosition + "; "
+                    + "totalItems: " + totalItems);
+        }
+
+        // Correctly set the background for each card. Only the top and last card should
+        // have rounded corners.
+        if (totalItems == 1) {
+            // One card - all corners are rounded
+            view.setBackgroundResource(
+                    R.drawable.car_card_rounded_top_bottom_background);
+        } else if (currentPosition == 0) {
+            // First card gets rounded top
+            view.setBackgroundResource(R.drawable.car_card_rounded_top_background);
+        } else if (currentPosition == totalItems - 1) {
+            // Last one has a rounded bottom
+            view.setBackgroundResource(R.drawable.car_card_rounded_bottom_background);
+        } else {
+            // Middle has no rounded corners
+            view.setBackgroundResource(R.color.phone_theme);
         }
     }
 }
