@@ -36,11 +36,11 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.android.car.dialer.telecom.TelecomUtils;
-import com.android.car.view.CardListBackgroundResolver;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.car.utils.ListItemBackgroundResolver;
 import androidx.car.widget.DayNightStyle;
 import androidx.car.widget.PagedListView;
 
@@ -92,7 +92,7 @@ public class ContactDetailsFragment extends Fragment
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         mListView = view.findViewById(R.id.list_view);
-        mListView.setDayNightStyle(DayNightStyle.FORCE_NIGHT);
+        mListView.setDayNightStyle(DayNightStyle.ALWAYS_LIGHT);
 
         RecyclerView recyclerView = mListView.getRecyclerView();
         for (RecyclerView.OnScrollListener listener : mOnScrollListeners) {
@@ -331,7 +331,7 @@ public class ContactDetailsFragment extends Fragment
             } else {
                 viewHolder.divier.setVisibility(View.VISIBLE);
             }
-            CardListBackgroundResolver.setBackground(viewHolder.card,
+            ListItemBackgroundResolver.setBackground(viewHolder.card,
                     viewHolder.getAdapterPosition(), getItemCount());
         }
     }

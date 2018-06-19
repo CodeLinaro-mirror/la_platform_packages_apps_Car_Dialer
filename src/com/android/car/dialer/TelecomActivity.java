@@ -82,9 +82,6 @@ public class TelecomActivity extends CarDrawerActivity implements CallListener {
         super.onCreate(savedInstanceState);
         setToolbarElevation(0f);
 
-        // Set toolbar to be click through so that the search icon can be clicked.
-        setToolbarClickThrough(true);
-
         if (vdebug()) {
             Log.d(TAG, "onCreate");
         }
@@ -232,7 +229,7 @@ public class TelecomActivity extends CarDrawerActivity implements CallListener {
                         + getCurrentFragment());
             }
 
-            if (ongoingCall == null && getCurrentFragment() instanceof OngoingCallFragment) {
+            if (ongoingCall == null && getCurrentFragment() instanceof InCallFragment) {
                 showSpeedDialFragment();
             } else if (ongoingCall != null) {
                 showOngoingCallFragment();
@@ -255,7 +252,7 @@ public class TelecomActivity extends CarDrawerActivity implements CallListener {
             return;
         }
 
-        Fragment fragment = StrequentsFragment.newInstance(mUiCallManager);
+        Fragment fragment = StrequentsFragment.newInstance();
         setContentFragment(fragment);
     }
 
@@ -263,14 +260,14 @@ public class TelecomActivity extends CarDrawerActivity implements CallListener {
         if (vdebug()) {
             Log.d(TAG, "showOngoingCallFragment");
         }
-        if (!mAllowFragmentCommits || getCurrentFragment() instanceof OngoingCallFragment) {
+        if (!mAllowFragmentCommits || getCurrentFragment() instanceof InCallFragment) {
             // in case the dialer is still open, (e.g. when dialing the second phone during
             // a phone call), close it
             maybeHideDialer();
             getDrawerController().closeDrawer();
             return;
         }
-        Fragment fragment = OngoingCallFragment.newInstance(mUiCallManager, mUiBluetoothMonitor);
+        Fragment fragment = InCallFragment.newInstance();
         setContentFragmentWithFadeAnimation(fragment);
         getDrawerController().closeDrawer();
     }
@@ -540,7 +537,7 @@ public class TelecomActivity extends CarDrawerActivity implements CallListener {
         int titleResId = R.string.phone_app_name;
 
         if (currentFragment instanceof StrequentsFragment) {
-            setTitle(getString(R.string.contacts_title));
+            titleResId = R.string.contacts_title;
         } else if (currentFragment instanceof CallHistoryFragment) {
             int callType = currentFragment.getArguments().getInt(CALL_TYPE_KEY);
             if (callType == PhoneLoader.CallType.MISSED_TYPE) {
