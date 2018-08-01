@@ -18,10 +18,6 @@ package com.android.car.dialer.ui;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
-import android.support.v7.widget.RecyclerView;
 import android.telecom.CallAudioState;
 import android.telecom.CallAudioState.CallAudioRoute;
 import android.view.LayoutInflater;
@@ -30,7 +26,11 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.car.widget.PagedListView;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.car.apps.common.FabDrawable;
 import com.android.car.dialer.R;
@@ -79,7 +79,15 @@ public class OnGoingCallControllerBarFragment extends Fragment {
                 R.layout.audio_route_switch_dialog, null, false);
         PagedListView list = dialogView.findViewById(R.id.list);
         List<Integer> availableRoutes = UiCallManager.get().getSupportedAudioRoute();
-        list.setDividerVisibilityManager(position -> position == (availableRoutes.size() - 1));
+        list.setDividerVisibilityManager(new PagedListView.DividerVisibilityManager() {
+            public boolean getShowDivider(int position) {
+                return !(position == (availableRoutes.size() - 1));
+            }
+
+            public boolean shouldHideDivider(int position) {
+                return !getShowDivider(position);
+            }
+        });
 
         mAudioRouteSelectionDialog = new AlertDialog.Builder(getContext())
                 .setView(dialogView)

@@ -23,12 +23,12 @@ import androidx.car.widget.ListItem;
 import androidx.car.widget.ListItemProvider;
 import androidx.car.widget.TextListItem;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.android.car.dialer.R;
 import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.dialer.ui.listitem.ContactListItem;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Provides ListItem for contact list.

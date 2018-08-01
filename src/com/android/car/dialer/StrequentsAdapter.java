@@ -21,15 +21,15 @@ import android.database.Cursor;
 import android.graphics.PorterDuff;
 import android.os.Handler;
 import android.provider.CallLog;
-import android.support.annotation.Nullable;
-import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.Nullable;
 import androidx.car.widget.PagedListView;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.car.dialer.telecom.PhoneLoader;
 import com.android.car.dialer.telecom.TelecomUtils;
