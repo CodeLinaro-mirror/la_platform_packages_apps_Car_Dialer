@@ -16,16 +16,21 @@
 
 package com.android.car.dialer.entity;
 
+import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.provider.ContactsContract;
+import android.telephony.PhoneNumberUtils;
 
 import androidx.annotation.Nullable;
 
 import com.android.car.dialer.log.L;
+import com.android.car.dialer.telecom.TelecomUtils;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -86,7 +91,7 @@ public class Contact {
     /**
      * Parses a Contact entry for a Cursor loaded from the Contact Database.
      */
-    public static Contact fromCursor(Cursor cursor) {
+    public static Contact fromCursor(Context context, Cursor cursor) {
         int idColumn = cursor.getColumnIndex(BaseColumns._ID);
         int starredColumn = cursor.getColumnIndex(ContactsContract.Contacts.STARRED);
         int pinnedColumn = cursor.getColumnIndex(ContactsContract.Contacts.PINNED);
@@ -109,7 +114,7 @@ public class Contact {
         contact.mPhoneNumbers.add(number);
         contact.mIsStarred = cursor.getInt(starredColumn) > 0;
         contact.mPinnedPosition = cursor.getInt(pinnedColumn);
-        contact.mIsVoiceMail = number.isVoiceMail();
+        contact.mIsVoiceMail = TelecomUtils.isVoicemailNumber(context, number.getNumber());
         contact.mId = cursor.getInt(idColumn);
 
         String avatarUriStr = cursor.getString(avatarUriColumn);
@@ -165,8 +170,11 @@ public class Contact {
         return mAvatarThumbnailUri;
     }
 
-    public Set<PhoneNumber> getNumbers() {
-        return mPhoneNumbers;
+    /**
+     * Returns a copy of all phone numbers associated with this contact.
+     */
+    public List<PhoneNumber> getNumbers() {
+        return new ArrayList<>(mPhoneNumbers);
     }
 
     public boolean isStarred() {
@@ -187,5 +195,19 @@ public class Contact {
             mPhoneNumbers.addAll(contact.getNumbers());
         }
         return this;
+    }
+
+    /**
+     * Looks up a {@link PhoneNumber} of this contact for the given phone number. Returns {@code
+     * null} if this contact doesn't contain the given phone number.
+     */
+    @Nullable
+    public PhoneNumber getPhoneNumber(String number) {
+        for (PhoneNumber phoneNumber : mPhoneNumbers) {
+            if (PhoneNumberUtils.compare(phoneNumber.getNumber(), number)) {
+                return phoneNumber;
+            }
+        }
+        return null;
     }
 }

@@ -43,6 +43,8 @@ import androidx.annotation.WorkerThread;
 import com.android.car.apps.common.LetterTileDrawable;
 import com.android.car.dialer.ContactEntry;
 import com.android.car.dialer.R;
+import com.android.car.dialer.entity.CallDetail;
+import com.android.car.dialer.entity.Contact;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
@@ -176,6 +178,15 @@ public class TelecomUtils {
         return sVoicemailNumber;
     }
 
+    /**
+     * Returns {@code true} if the given number is a voice mail number.
+     *
+     * @see TelephonyManager#getVoiceMailNumber()
+     */
+    public static boolean isVoicemailNumber(Context context, String number) {
+        return getVoicemailNumber(context).equals(number);
+    }
+
     public static TelephonyManager getTelephonyManager(Context context) {
         if (sTelephonyManager == null) {
             sTelephonyManager =
@@ -283,10 +294,12 @@ public class TelecomUtils {
      * "Mobile · 1:05"
      * "Bluetooth disconnected"
      */
-    public static String getCallInfoText(Context context, UiCall call, CharSequence label) {
+    public static String getCallInfoText(Context context, CallDetail callDetail, int callState,
+            String number) {
+        CharSequence label = TelecomUtils.getTypeFromNumber(context, number);
         String text;
-        if (call.getState() == Call.STATE_ACTIVE) {
-            long duration = System.currentTimeMillis() - call.getConnectTimeMillis();
+        if (callState == Call.STATE_ACTIVE) {
+            long duration = System.currentTimeMillis() - callDetail.getConnectTimeMillis();
             String durationString = DateUtils.formatElapsedTime(duration / 1000);
             if (!TextUtils.isEmpty(durationString) && !TextUtils.isEmpty(label)) {
                 text = context.getString(R.string.phone_label_with_info, label, durationString);
@@ -298,7 +311,7 @@ public class TelecomUtils {
                 text = "";
             }
         } else {
-            String state = callStateToUiString(context, call.getState());
+            String state = callStateToUiString(context, callState);
             if (!TextUtils.isEmpty(label)) {
                 text = context.getString(R.string.phone_label_with_info, label, state);
             } else {
@@ -357,16 +370,16 @@ public class TelecomUtils {
     public static void setContactBitmapAsync(Context context,
             final ImageView icon, final @Nullable String name, final String number) {
         Resources r = icon.getResources();
-        ContactEntry contactEntry = InMemoryPhoneBook.get().lookupContactEntry(number);
+        Contact contact = InMemoryPhoneBook.get().lookupContactEntry(number);
         LetterTileDrawable letterTileDrawable = new LetterTileDrawable(r);
         letterTileDrawable.setContactDetails(name, number);
         letterTileDrawable.setIsCircular(true);
-        if (contactEntry != null) {
+        if (contact != null) {
             Uri uri = null;
-            if (contactEntry.getAvatarThumbnailUri() != null) {
-                uri = Uri.parse(contactEntry.getAvatarThumbnailUri());
-            } else if (contactEntry.getAvatarUri() != null) {
-                uri = Uri.parse(contactEntry.getAvatarUri());
+            if (contact.getAvatarThumbnailUri() != null) {
+                uri = contact.getAvatarThumbnailUri();
+            } else if (contact.getAvatarUri() != null) {
+                uri = contact.getAvatarUri();
             }
 
             Glide.with(context)

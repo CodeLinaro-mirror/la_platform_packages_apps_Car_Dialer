@@ -31,15 +31,14 @@ import android.widget.TextView;
 import androidx.annotation.ColorInt;
 import androidx.annotation.Nullable;
 import androidx.car.util.ListItemBackgroundResolver;
-import androidx.car.widget.DayNightStyle;
 import androidx.car.widget.PagedListView;
-import androidx.fragment.app.Fragment;
 import androidx.loader.app.LoaderManager;
 import androidx.loader.content.CursorLoader;
 import androidx.loader.content.Loader;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.car.dialer.telecom.TelecomUtils;
+import com.android.car.dialer.ui.common.DialerBaseFragment;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,7 +48,7 @@ import java.util.List;
  * primarily used to respond to the results of search queries but supplyig it with the content://
  * uri of a contact should work too.
  */
-public class ContactDetailsFragment extends Fragment
+public class ContactDetailsFragment extends DialerBaseFragment
         implements LoaderManager.LoaderCallbacks<Cursor> {
     private static final String TAG = "ContactDetailsFragment";
     private static final String TELEPHONE_URI_PREFIX = "tel:";
@@ -92,7 +91,6 @@ public class ContactDetailsFragment extends Fragment
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         mListView = view.findViewById(R.id.list_view);
-        mListView.setDayNightStyle(DayNightStyle.ALWAYS_LIGHT);
 
         RecyclerView recyclerView = mListView.getRecyclerView();
         for (RecyclerView.OnScrollListener listener : mOnScrollListeners) {
