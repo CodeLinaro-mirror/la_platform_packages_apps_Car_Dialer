@@ -93,9 +93,6 @@ public class TelecomActivity extends CarDrawerActivity implements
 
         InMemoryPhoneBook.init(getApplicationContext());
 
-        findViewById(R.id.search).setOnClickListener(
-                v -> startActivity(new Intent(this, ContactSearchActivity.class)));
-
         TelecomActivityViewModel viewModel = ViewModelProviders.of(this).get(
                 TelecomActivityViewModel.class);
         mBluetoothErrorMsgLiveData = viewModel.getErrorMessage();
@@ -186,7 +183,7 @@ public class TelecomActivity extends CarDrawerActivity implements
 
             case Intent.ACTION_CALL:
                 number = PhoneNumberUtils.getNumberFromIntent(intent, this);
-                mUiCallManager.safePlaceCall(number, false /* bluetoothRequired */);
+                mUiCallManager.placeCall(number);
                 break;
 
             default:
@@ -199,10 +196,9 @@ public class TelecomActivity extends CarDrawerActivity implements
     /**
      * Updates the content fragment of this Activity based on the state of the application.
      */
+    // TODO: refactor the TelecomActivity to use LiveData for controlling current visible Fragment.
     private void updateCurrentFragment() {
-        if (vdebug()) {
-            Log.d(TAG, "updateCurrentFragment()");
-        }
+        L.d(TAG, "updateCurrentFragment()");
 
         if (!mBluetoothErrorMsgLiveData.getValue().equals(TelecomActivityViewModel.NO_BT_ERROR)) {
             showNoHfpFragment(mBluetoothErrorMsgLiveData.getValue());
@@ -210,12 +206,13 @@ public class TelecomActivity extends CarDrawerActivity implements
             boolean hasOngoingCall = mHasOngoingCallLiveData.getValue() != null
                     ? mHasOngoingCallLiveData.getValue()
                     : false;
+            Fragment currentFragment = getCurrentFragment();
 
-            if (!hasOngoingCall && getCurrentFragment() instanceof InCallFragment) {
-                showSpeedDialFragment();
-            } else if (hasOngoingCall) {
+            if (hasOngoingCall) {
                 showOngoingCallFragment();
-            } else if (getCurrentFragment() == null) {
+            } else if (currentFragment == null
+                    || currentFragment instanceof InCallFragment
+                    || currentFragment instanceof NoHfpFragment){
                 showSpeedDialFragment();
             }
         }
