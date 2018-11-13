@@ -12,6 +12,7 @@ import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 
+import com.android.car.dialer.log.L;
 import com.android.car.dialer.R;
 import com.android.car.dialer.TelecomActivity;
 import com.android.car.dialer.livedata.ActiveCallListLiveData;
@@ -26,6 +27,7 @@ import java.util.Set;
  * View model for {@link TelecomActivity}.
  */
 public class TelecomActivityViewModel extends AndroidViewModel {
+    private static final String TAG = "CD.TelecomActivityViewModel";
     /** A constant which indicates that there's no Bluetooth error. */
     public static final String NO_BT_ERROR = "NO_ERROR";
 
@@ -72,9 +74,9 @@ public class TelecomActivityViewModel extends AndroidViewModel {
     }
 
     private static class ErrorStringLiveData extends MediatorLiveData<String> {
-        private boolean mIsHfpConnected;
-        private boolean mIsBluetoothEnabled;
-        private boolean mHasPairedDevices;
+        private LiveData<Integer> mHfpStateLiveData;
+        private LiveData<Set<BluetoothDevice>> mPairedListLiveData;
+        private LiveData<Integer> mBluetoothStateLiveData;
 
         private Context mContext;
 
@@ -83,9 +85,10 @@ public class TelecomActivityViewModel extends AndroidViewModel {
                 BluetoothPairListLiveData pairListLiveData,
                 BluetoothStateLiveData bluetoothStateLiveData) {
             mContext = context;
-            onBluetoothStateChanged(bluetoothStateLiveData.getValue());
-            onPairListChanged(pairListLiveData.getValue());
-            onHfpStateChanged(hfpStateLiveData.getValue());
+            mHfpStateLiveData = hfpStateLiveData;
+            mPairedListLiveData = pairListLiveData;
+            mBluetoothStateLiveData = bluetoothStateLiveData;
+            setValue(NO_BT_ERROR);
 
             addSource(hfpStateLiveData, this::onHfpStateChanged);
             addSource(pairListLiveData, this::onPairListChanged);
@@ -93,26 +96,58 @@ public class TelecomActivityViewModel extends AndroidViewModel {
         }
 
         private void onHfpStateChanged(Integer state) {
-            mIsHfpConnected = state == BluetoothProfile.STATE_CONNECTED;
-            if (mIsBluetoothEnabled && mHasPairedDevices && !mIsHfpConnected) {
-                setValue(mContext.getString(R.string.no_hfp));
-            } else {
-                setValue(NO_BT_ERROR);
-            }
+            update();
         }
 
         private void onPairListChanged(Set<BluetoothDevice> pairedDevices) {
-            mHasPairedDevices = pairedDevices != null && !pairedDevices.isEmpty();
-            if (mIsBluetoothEnabled && !mHasPairedDevices) {
-                setValue(mContext.getString(R.string.bluetooth_unpaired));
-            }
+            update();
         }
 
         private void onBluetoothStateChanged(Integer state) {
-            mIsBluetoothEnabled = state == BluetoothStateLiveData.BluetoothState.ENABLED;
-            if (!mIsBluetoothEnabled) {
+            update();
+        }
+
+        @Override
+        protected void onActive() {
+            super.onActive();
+            update();
+        }
+
+        private void update() {
+            boolean isBluetoothEnabled = isBluetoothEnabled();
+            boolean hasPairedDevices = hasPairedDevices();
+            boolean isHfpConnected = isHfpConnected();
+            L.d(TAG, "Update error string."
+                    + " isBluetoothEnabled : " + isBluetoothEnabled
+                    + " hasPairedDevices : " + hasPairedDevices
+                    + " isHfpConnected : " + isHfpConnected);
+            if (!isBluetoothEnabled) {
                 setValue(mContext.getString(R.string.bluetooth_disabled));
+            } else if (!hasPairedDevices) {
+                setValue(mContext.getString(R.string.bluetooth_unpaired));
+            } else if (!isHfpConnected) {
+                setValue(mContext.getString(R.string.no_hfp));
+            } else {
+                if (!NO_BT_ERROR.equals(getValue())) {
+                    setValue(NO_BT_ERROR);
+                }
             }
+        }
+
+        private boolean isHfpConnected() {
+            Integer hfpState = mHfpStateLiveData.getValue();
+            return hfpState == null || hfpState == BluetoothProfile.STATE_CONNECTED;
+        }
+
+        private boolean isBluetoothEnabled() {
+            Integer bluetoothState = mBluetoothStateLiveData.getValue();
+            return bluetoothState == null
+                    || bluetoothState != BluetoothStateLiveData.BluetoothState.DISABLED;
+        }
+
+        private boolean hasPairedDevices() {
+            Set<BluetoothDevice> pairedDevices = mPairedListLiveData.getValue();
+            return pairedDevices == null || !pairedDevices.isEmpty();
         }
     }
 }

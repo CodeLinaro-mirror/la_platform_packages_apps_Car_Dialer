@@ -29,6 +29,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProviders;
 
@@ -46,7 +47,7 @@ public class InCallFragment extends DialerBaseFragment implements
         OnGoingCallControllerBarFragment.OnGoingCallControllerBarCallback {
     private static final String TAG = "CD.InCallFragment";
 
-    private Fragment mDialerFragment;
+    private Fragment mDialpadFragment;
     private View mUserProfileContainerView;
     private View mDialerFragmentContainer;
     private TextView mUserProfileBodyText;
@@ -60,9 +61,9 @@ public class InCallFragment extends DialerBaseFragment implements
             @Nullable Bundle savedInstanceState) {
         View fragmentView = inflater.inflate(R.layout.in_call_fragment, container, false);
         mUserProfileContainerView = fragmentView.findViewById(R.id.user_profile_container);
-        mDialerFragmentContainer = fragmentView.findViewById(R.id.dialer_container);
+        mDialerFragmentContainer = fragmentView.findViewById(R.id.dialpad_container);
         mUserProfileBodyText = mUserProfileContainerView.findViewById(R.id.body);
-        mDialerFragment = DialpadFragment.newInCallDialpad();
+        mDialpadFragment = DialpadFragment.newInCallDialpad();
 
         InCallViewModel inCallViewModel = ViewModelProviders.of(this).get(InCallViewModel.class);
 
@@ -75,7 +76,7 @@ public class InCallFragment extends DialerBaseFragment implements
     @Override
     public void onOpenDialpad() {
         getChildFragmentManager().beginTransaction()
-                .replace(R.id.dialer_container, mDialerFragment)
+                .replace(R.id.dialpad_container, mDialpadFragment)
                 .commit();
         mDialerFragmentContainer.setVisibility(View.VISIBLE);
         mUserProfileContainerView.setVisibility(View.GONE);
@@ -83,8 +84,8 @@ public class InCallFragment extends DialerBaseFragment implements
 
     @Override
     public void onCloseDialpad() {
-        getFragmentManager().beginTransaction()
-                .remove(mDialerFragment)
+        getChildFragmentManager().beginTransaction()
+                .remove(mDialpadFragment)
                 .commit();
         mDialerFragmentContainer.setVisibility(View.GONE);
         mUserProfileContainerView.setVisibility(View.VISIBLE);
@@ -133,5 +134,11 @@ public class InCallFragment extends DialerBaseFragment implements
         L.i(TAG, "updateBody " + text);
         mUserProfileBodyText.setText(text);
         mUserProfileBodyText.setVisibility(TextUtils.isEmpty(text) ? View.GONE : View.VISIBLE);
+    }
+
+    @StringRes
+    @Override
+    protected int getActionBarTitleRes() {
+        return R.string.in_call_title;
     }
 }

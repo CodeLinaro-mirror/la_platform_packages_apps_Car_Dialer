@@ -16,7 +16,7 @@
 package com.android.car.dialer.ui.calllog;
 
 import android.content.Context;
-import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Icon;
 
 import androidx.car.widget.ListItem;
 import androidx.car.widget.ListItemProvider;
@@ -43,12 +43,12 @@ public class CallHistoryListItemProvider extends ListItemProvider {
         for (UiCallLog callLogItem : items) {
             TextListItem callLogListItem = new CallLogListItem(context, callLogItem);
             // set a default icon drawable.
-            callLogListItem.setPrimaryActionIcon(null,
+            callLogListItem.setPrimaryActionIcon((Icon) null,
                     TextListItem.PRIMARY_ACTION_ICON_SIZE_MEDIUM);
             callLogListItem.setTitle(callLogItem.getTitle());
             callLogListItem.setBody(callLogItem.getText());
             callLogListItem.setOnClickListener(
-                    (v) -> UiCallManager.get().safePlaceCall(callLogItem.getNumber(), false));
+                    (v) -> UiCallManager.get().placeCall(callLogItem.getNumber()));
 
             mItems.add(callLogListItem);
         }
