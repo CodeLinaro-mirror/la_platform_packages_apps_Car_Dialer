@@ -1,11 +1,9 @@
 package com.android.car.dialer.telecom;
 
-import static com.google.i18n.phonenumbers.PhoneNumberUtil.MatchType.EXACT_MATCH;
-import static com.google.i18n.phonenumbers.PhoneNumberUtil.MatchType.NSN_MATCH;
-
 import android.content.Context;
 import android.database.Cursor;
 import android.provider.ContactsContract;
+import android.text.TextUtils;
 
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
@@ -13,12 +11,12 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.android.car.dialer.common.ObservableAsyncQuery;
 import com.android.car.dialer.entity.Contact;
+import com.android.car.dialer.entity.I18nPhoneNumberWrapper;
 import com.android.car.dialer.entity.PhoneNumber;
 import com.android.car.dialer.log.L;
 
-import com.google.i18n.phonenumbers.PhoneNumberUtil;
-
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +36,10 @@ public class InMemoryPhoneBook {
     private ObservableAsyncQuery mObservableAsyncQuery;
     private List<Contact> mContacts = new ArrayList<>();
     private MutableLiveData<List<Contact>> mContactsLiveData = new MutableLiveData<>();
+    /**
+     * A map to speed up phone number searching.
+     */
+    private Map<I18nPhoneNumberWrapper, Contact> mPhoneNumberContactMap = new HashMap<>();
 
     private InMemoryPhoneBook(Context context) {
         mContext = context;
@@ -107,26 +109,26 @@ public class InMemoryPhoneBook {
      */
     @Nullable
     public Contact lookupContactEntry(String phoneNumber) {
-        L.v(TAG, "lookupContactEntry: " + phoneNumber);
+        L.v(TAG, "lookupContactEntry: %s", phoneNumber);
         if (!isLoaded()) {
             L.w(TAG, "looking up a contact while loading.");
             return null;
         }
 
-        for (Contact contact : mContacts) {
-            for (PhoneNumber number : contact.getNumbers()) {
-                PhoneNumberUtil.MatchType matchType = PhoneNumberUtil.getInstance().isNumberMatch(
-                        number.getNumber(), phoneNumber);
-                if (matchType == EXACT_MATCH || matchType == NSN_MATCH) {
-                    return contact;
-                }
-            }
+        if (TextUtils.isEmpty(phoneNumber)) {
+            L.w(TAG, "looking up an empty phone number.");
+            return null;
         }
-        return null;
+
+        I18nPhoneNumberWrapper i18nPhoneNumber = I18nPhoneNumberWrapper.newInstance(mContext,
+                phoneNumber);
+        return mPhoneNumberContactMap.get(i18nPhoneNumber);
     }
 
     private void onDataLoaded(Cursor cursor) {
         Map<String, Contact> result = new LinkedHashMap<>();
+        mPhoneNumberContactMap.clear();
+
         while (cursor.moveToNext()) {
             Contact contact = Contact.fromCursor(mContext, cursor);
             String lookupKey = contact.getLookupKey();
@@ -137,10 +139,18 @@ public class InMemoryPhoneBook {
                 result.put(lookupKey, contact);
             }
         }
+
         mIsLoaded = true;
         mContacts.clear();
         mContacts.addAll(result.values());
         mContactsLiveData.setValue(mContacts);
-        L.d(TAG, "onDataLoaded " + mContacts);
+
+        for (Contact contact : mContacts) {
+            for (PhoneNumber phoneNumber : contact.getNumbers()) {
+                mPhoneNumberContactMap.put(phoneNumber.getI18nPhoneNumberWrapper(), contact);
+            }
+        }
+
+        L.d(TAG, "onDataLoaded %s", mContacts);
     }
 }
