@@ -40,7 +40,7 @@ public class ContactListItemProvider extends ListItemProvider {
     private final Context mContext;
 
     public interface OnShowContactDetailListener {
-        void onShowContactDetail(int contactId, String lookupKey);
+        void onShowContactDetail(Contact contact);
     }
 
     public ContactListItemProvider(Context context,
@@ -64,19 +64,17 @@ public class ContactListItemProvider extends ListItemProvider {
                             UiCallManager.get().placeCall(
                                     contact.getNumbers().get(0).getNumber());
                         } else {
-                            mOnShowContactDetailListener.onShowContactDetail(contact.getId(),
-                                    contact.getLookupKey());
+                            mOnShowContactDetailListener.onShowContactDetail(contact);
                         }
 
                     });
             Drawable supplementalIconDrawable = mContext.getDrawable(R.drawable.ic_contact);
-            supplementalIconDrawable.setTint(mContext.getColor(R.color.car_tint));
+            supplementalIconDrawable.setTint(mContext.getColor(R.color.dialer_tint));
             int iconSize = mContext.getResources().getDimensionPixelSize(
                     R.dimen.car_primary_icon_size);
             supplementalIconDrawable.setBounds(0, 0, iconSize, iconSize);
             textListItem.setSupplementalIcon(supplementalIconDrawable, true,
-                    (v) -> mOnShowContactDetailListener.onShowContactDetail(contact.getId(),
-                            contact.getLookupKey()));
+                    (v) -> mOnShowContactDetailListener.onShowContactDetail(contact));
             mListItems.add(textListItem);
         }
     }

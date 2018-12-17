@@ -16,8 +16,6 @@
 
 package com.android.car.dialer.ui.activecall;
 
-import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.telecom.Call;
 import android.text.TextUtils;
@@ -89,11 +87,6 @@ public class InCallFragment extends DialerBaseFragment implements
                 .commit();
         mDialerFragmentContainer.setVisibility(View.GONE);
         mUserProfileContainerView.setVisibility(View.VISIBLE);
-    }
-
-    @Override
-    protected Drawable getFullScreenBackgroundColor() {
-        return new ColorDrawable(getContext().getColor(R.color.phone_theme_secondary));
     }
 
     private void bindUserProfileView(@Nullable CallDetail callDetail) {
