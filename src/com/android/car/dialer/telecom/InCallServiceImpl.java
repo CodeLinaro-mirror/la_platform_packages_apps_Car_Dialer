@@ -90,7 +90,8 @@ public class InCallServiceImpl extends InCallService {
                 Log.d(TAG, "onStateChanged call: " + call + ", state: " + state );
             }
 
-            if (state == Call.STATE_RINGING || state == Call.STATE_DIALING) {
+            if (state == Call.STATE_RINGING || state == Call.STATE_DIALING ||
+                state == Call.STATE_ACTIVE) {
                 if (Log.isLoggable(TAG, Log.INFO)) {
                     Log.i(TAG, "Incoming/outgoing call: " + call);
                 }
