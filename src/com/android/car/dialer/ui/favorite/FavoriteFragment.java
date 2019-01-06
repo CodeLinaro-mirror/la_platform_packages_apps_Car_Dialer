@@ -16,6 +16,7 @@
 
 package com.android.car.dialer.ui.favorite;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
@@ -27,7 +28,6 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
-import androidx.car.app.CarListDialog;
 import androidx.car.widget.PagedListView;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProviders;
@@ -84,11 +84,6 @@ public class FavoriteFragment extends DialerBaseFragment {
         return view;
     }
 
-    @Override
-    protected Drawable getFullScreenBackgroundColor() {
-        return new ColorDrawable(getContext().getColor(R.color.phone_theme_secondary));
-    }
-
     private void onItemClicked(Contact contact) {
         Context context = getContext();
         // TODO: check whether a default entry is set, if set, directly connect that entry
@@ -101,11 +96,10 @@ public class FavoriteFragment extends DialerBaseFragment {
                         phoneNumber.getNumber() + " " + phoneNumber.getReadableLabel(
                                 context.getResources()));
             }
-            new CarListDialog.Builder(context)
+            new AlertDialog.Builder(context)
                     .setTitle(R.string.select_number_dialog_title)
                     .setItems(numberListItems.toArray(new String[0]), (dialog, which) -> placeCall(
                             contact.getNumbers().get(which).getNumber()))
-                    .create()
                     .show();
         } else if (contact.getNumbers().size() == 1) {
             placeCall(contact.getNumbers().get(0).getNumber());
