@@ -134,6 +134,9 @@ public class InCallFragment extends Fragment implements
     @Override
     public void onCallStateChanged(UiCall call, int state) {
         int callState = call.getState();
+        UiCall primaryCall = UiCallManager.get().getPrimaryCall();
+        int callSize = UiCallManager.get().getCalls().size();
+
         switch (callState) {
             case Call.STATE_NEW:
             case Call.STATE_CONNECTING:
@@ -141,8 +144,12 @@ public class InCallFragment extends Fragment implements
             case Call.STATE_SELECT_PHONE_ACCOUNT:
             case Call.STATE_HOLDING:
             case Call.STATE_DISCONNECTED:
-                mHandler.removeCallbacks(mUpdateDurationRunnable);
-                updateBody(call);
+                if (callSize == 1) {
+                    // Add callSize to check. Don't remove Runnable object which
+                    // is used for UI update if two calls exist.
+                    mHandler.removeCallbacks(mUpdateDurationRunnable);
+                }
+                updateBody(primaryCall);
                 break;
             case Call.STATE_ACTIVE:
                 mHandler.post(mUpdateDurationRunnable);
@@ -184,5 +191,12 @@ public class InCallFragment extends Fragment implements
         mUserProfileBodyText.setText(callInfoText);
         mUserProfileBodyText.setVisibility(
                 TextUtils.isEmpty(callInfoText) ? View.GONE : View.VISIBLE);
+
+        // Update caller name
+        String number = primaryCall.getNumber();
+        String displayName = TelecomUtils.getDisplayName(getContext(), primaryCall);
+
+        TextView nameView = mUserProfileContainerView.findViewById(R.id.title);
+        nameView.setText(displayName);
     }
 }
