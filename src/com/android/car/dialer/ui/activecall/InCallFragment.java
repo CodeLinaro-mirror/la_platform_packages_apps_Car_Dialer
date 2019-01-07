@@ -27,23 +27,25 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProviders;
 
 import com.android.car.dialer.R;
 import com.android.car.dialer.entity.CallDetail;
+import com.android.car.dialer.entity.Contact;
 import com.android.car.dialer.log.L;
+import com.android.car.dialer.telecom.InMemoryPhoneBook;
 import com.android.car.dialer.telecom.TelecomUtils;
-import com.android.car.dialer.ui.common.DialerBaseFragment;
 import com.android.car.dialer.ui.dialpad.DialpadFragment;
 
 /**
  * A fragment that displays information about an on-going call with options to hang up.
  */
-public class InCallFragment extends DialerBaseFragment implements
+public class InCallFragment extends Fragment implements
         OnGoingCallControllerBarFragment.OnGoingCallControllerBarCallback {
     private static final String TAG = "CD.InCallFragment";
+    private static final String TAG_CALL_RINGING = "CallStateRinging";
+    private static final String TAG_CALL_OTHER = "CallStateOther";
 
     private Fragment mDialpadFragment;
     private View mUserProfileContainerView;
@@ -102,7 +104,8 @@ public class InCallFragment extends DialerBaseFragment implements
         nameView.setText(displayName);
 
         ImageView avatar = mUserProfileContainerView.findViewById(R.id.avatar);
-        TelecomUtils.setContactBitmapAsync(getContext(), avatar, displayName, number);
+        Contact contact = InMemoryPhoneBook.get().lookupContactEntry(number);
+        TelecomUtils.setContactBitmapAsync(getContext(), avatar, contact, displayName);
     }
 
     private void updateControllerBarFragment(@Nullable Integer callState) {
@@ -111,27 +114,30 @@ public class InCallFragment extends DialerBaseFragment implements
             return;
         }
 
-        Fragment controllerBarFragment;
         if (callState == Call.STATE_RINGING) {
-            controllerBarFragment = RingingCallControllerBarFragment.newInstance();
-        } else {
-            controllerBarFragment = OnGoingCallControllerBarFragment.newInstance();
+            Fragment controllerBarFragment = RingingCallControllerBarFragment.newInstance();
+            getChildFragmentManager().beginTransaction()
+                    .replace(R.id.controller_bar_container, controllerBarFragment, TAG_CALL_RINGING)
+                    .commit();
+            return;
         }
-
-        getChildFragmentManager().beginTransaction()
-                .replace(R.id.controller_bar_container, controllerBarFragment)
-                .commit();
+        Fragment controllerBarFragment = getChildFragmentManager().findFragmentByTag(
+                TAG_CALL_OTHER);
+        if (controllerBarFragment == null) {
+            controllerBarFragment = OnGoingCallControllerBarFragment.newInstance(
+                    callState.intValue());
+            getChildFragmentManager().beginTransaction()
+                    .replace(R.id.controller_bar_container, controllerBarFragment, TAG_CALL_OTHER)
+                    .commit();
+        } else {
+            ((OnGoingCallControllerBarFragment) controllerBarFragment).setCallState(
+                    callState.intValue());
+        }
     }
 
     private void updateBody(String text) {
         L.i(TAG, "updateBody: %s", text);
         mUserProfileBodyText.setText(text);
         mUserProfileBodyText.setVisibility(TextUtils.isEmpty(text) ? View.GONE : View.VISIBLE);
-    }
-
-    @StringRes
-    @Override
-    protected int getActionBarTitleRes() {
-        return R.string.in_call_title;
     }
 }
