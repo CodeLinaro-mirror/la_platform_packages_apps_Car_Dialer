@@ -20,6 +20,7 @@ import android.content.Context;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.telecom.Call;
 import android.text.TextUtils;
 import android.util.SparseArray;
@@ -59,6 +60,7 @@ public class DialpadFragment extends DialerBaseFragment implements
 
     private static final int TONE_LENGTH_INFINITE = -1;
     private static final int TONE_RELATIVE_VOLUME = 80;
+    private static final int PLAY_DTMF_TONE = 1;
 
     static {
         sToneMap.put(KeyEvent.KEYCODE_1, ToneGenerator.TONE_DTMF_1);
@@ -102,6 +104,7 @@ public class DialpadFragment extends DialerBaseFragment implements
     private int mMode;
     private StringBuffer mNumber = new StringBuffer(MAX_DIAL_NUMBER);
     private ToneGenerator mToneGenerator;
+    private boolean mDTMFToneEnabled;
     /**
      * An active call which this DialpadFragment is serving for.
      */
@@ -148,7 +151,7 @@ public class DialpadFragment extends DialerBaseFragment implements
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
         mMode = getArguments().getInt(DIALPAD_MODE_KEY);
-        L.d(TAG, "onCreateView mode: " + mMode);
+        L.d(TAG, "onCreateView mode: %s", mMode);
         View rootView = inflater.inflate(R.layout.dialpad_fragment, container, false);
         Fragment keypadFragment = KeypadFragment.newInstance();
         getChildFragmentManager().beginTransaction()
@@ -193,6 +196,14 @@ public class DialpadFragment extends DialerBaseFragment implements
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        mDTMFToneEnabled = Settings.System.getInt(getContext().getContentResolver(),
+                Settings.System.DTMF_TONE_WHEN_DIALING, 1) == PLAY_DTMF_TONE;
+        L.d(TAG, "DTMF tone enabled = %s", String.valueOf(mDTMFToneEnabled));
+    }
+
+    @Override
     public void onPause() {
         super.onPause();
         mToneGenerator.stopTone();
@@ -215,17 +226,24 @@ public class DialpadFragment extends DialerBaseFragment implements
         String digit = sDialValueMap.get(keycode).toString();
         appendDialedNumber(digit);
 
+        if (!mDTMFToneEnabled) {
+            return;
+        }
         if (mActiveCall != null) {
-            L.d(TAG, "start DTMF tone for " + keycode);
+            L.d(TAG, "start DTMF tone for %s", keycode);
             mActiveCall.playDtmfTone(sDialValueMap.get(keycode));
         } else {
-            L.d(TAG, "start key pressed tone for " + keycode);
+            L.d(TAG, "start key pressed tone for %s", keycode);
             mToneGenerator.startTone(sToneMap.get(keycode), TONE_LENGTH_INFINITE);
         }
     }
 
     @Override
     public void onKeyUp(@KeypadFragment.DialKeyCode int keycode) {
+        if (!mDTMFToneEnabled) {
+            return;
+        }
+
         if (mActiveCall != null) {
             L.d(TAG, "stop DTMF tone");
             mActiveCall.stopDtmfTone();
