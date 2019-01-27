@@ -18,8 +18,10 @@ package com.android.car.dialer.entity;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.icu.text.Collator;
 import android.net.Uri;
-import android.provider.BaseColumns;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.provider.ContactsContract;
 import android.telephony.PhoneNumberUtils;
 
@@ -27,6 +29,8 @@ import androidx.annotation.Nullable;
 
 import com.android.car.dialer.log.L;
 import com.android.car.dialer.telecom.TelecomUtils;
+
+import android.text.TextUtils;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -36,11 +40,30 @@ import java.util.Set;
 /**
  * Encapsulates data about a phone Contact entry. Typically loaded from the local Contact store.
  */
-public class Contact {
+public class Contact implements Parcelable, Comparable<Contact> {
     private static final String TAG = "CD.Contact";
+    private static final int IS_PRIMARY = 1;
 
     /**
-     * An unique primary key for searching an entry.
+     * Contact belongs to TYPE_LETTER if its display name starts with a letter
+     */
+    private static final int TYPE_LETTER = 1;
+
+    /**
+     * Contact belongs to TYPE_DIGIT if its display name starts with a digit
+     */
+    private static final int TYPE_DIGIT = 2;
+
+    /**
+     * Contact belongs to TYPE_OTHER if it does not belong to TYPE_LETTER or TYPE_DIGIT
+     * Such as empty display name or the display name starts with "_"
+     */
+    private static final int TYPE_OTHER = 3;
+
+
+    /**
+     * A reference to the {@link ContactsContract.Contacts#_ID} that this data belongs to. See
+     * {@link ContactsContract.Contacts.Entity#CONTACT_ID}
      */
     private int mId;
 
@@ -56,7 +79,7 @@ public class Contact {
     private int mPinnedPosition;
 
     /**
-     * All phone numbers of this contact.
+     * All phone numbers of this contact mapping to the unique primary key for the raw data entry.
      */
     private Set<PhoneNumber> mPhoneNumbers = new HashSet<>();
 
@@ -88,34 +111,52 @@ public class Contact {
      */
     private boolean mIsVoiceMail;
 
+    private PhoneNumber mPrimaryPhoneNumber;
+
     /**
      * Parses a Contact entry for a Cursor loaded from the Contact Database.
      */
     public static Contact fromCursor(Context context, Cursor cursor) {
-        int idColumn = cursor.getColumnIndex(BaseColumns._ID);
-        int starredColumn = cursor.getColumnIndex(ContactsContract.Contacts.STARRED);
-        int pinnedColumn = cursor.getColumnIndex(ContactsContract.Contacts.PINNED);
-        int displayNameColumn = cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME);
-        int avatarUriColumn = cursor.getColumnIndex(ContactsContract.Contacts.PHOTO_URI);
+        int contactIdColumn = cursor.getColumnIndex(
+                ContactsContract.CommonDataKinds.Phone.CONTACT_ID);
+        int starredColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.STARRED);
+        int pinnedColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PINNED);
+        int displayNameColumn = cursor.getColumnIndex(
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);
+        int avatarUriColumn = cursor.getColumnIndex(
+                ContactsContract.CommonDataKinds.Phone.PHOTO_URI);
         int avatarThumbnailColumn = cursor.getColumnIndex(
-                ContactsContract.Contacts.PHOTO_THUMBNAIL_URI);
-        int lookupKeyColumn = cursor.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY);
+                ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI);
+        int lookupKeyColumn = cursor.getColumnIndex(
+                ContactsContract.CommonDataKinds.Phone.LOOKUP_KEY);
+        int isPrimaryColumn = cursor.getColumnIndex(
+                ContactsContract.CommonDataKinds.Phone.IS_PRIMARY);
         int typeColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE);
         int labelColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.LABEL);
         int numberColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER);
+        int rawDataIdColumn = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone._ID);
+        int dataVersionColumn = cursor.getColumnIndex(
+                ContactsContract.CommonDataKinds.Phone.DATA_VERSION);
+
+        Contact contact = new Contact();
+        contact.mId = cursor.getInt(contactIdColumn);
+        contact.mDisplayName = cursor.getString(displayNameColumn);
 
         PhoneNumber number = PhoneNumber.newInstance(context,
                 cursor.getString(numberColumn),
                 cursor.getInt(typeColumn),
-                cursor.getString(labelColumn));
-
-        Contact contact = new Contact();
-        contact.mDisplayName = cursor.getString(displayNameColumn);
+                cursor.getString(labelColumn),
+                cursor.getInt(rawDataIdColumn),
+                cursor.getInt(dataVersionColumn));
         contact.mPhoneNumbers.add(number);
+
+        if (cursor.getInt(isPrimaryColumn) == IS_PRIMARY) {
+            contact.mPrimaryPhoneNumber = number;
+        }
+
         contact.mIsStarred = cursor.getInt(starredColumn) > 0;
         contact.mPinnedPosition = cursor.getInt(pinnedColumn);
         contact.mIsVoiceMail = TelecomUtils.isVoicemailNumber(context, number.getNumber());
-        contact.mId = cursor.getInt(idColumn);
 
         String avatarUriStr = cursor.getString(avatarUriColumn);
         contact.mAvatarUri = avatarUriStr == null ? null : Uri.parse(avatarUriStr);
@@ -157,22 +198,17 @@ public class Contact {
         return mIsVoiceMail;
     }
 
-    public int getId() {
-        return mId;
-    }
-
     @Nullable
     public Uri getAvatarUri() {
-        return mAvatarUri;
+        return mAvatarThumbnailUri != null ? mAvatarThumbnailUri : mAvatarUri;
     }
 
     public String getLookupKey() {
         return mLookupKey;
     }
 
-    @Nullable
-    public Uri getAvatarThumbnailUri() {
-        return mAvatarThumbnailUri;
+    public Uri getLookupUri() {
+        return ContactsContract.Contacts.getLookupUri(mId, mLookupKey);
     }
 
     /**
@@ -197,7 +233,18 @@ public class Contact {
      */
     public Contact merge(Contact contact) {
         if (equals(contact)) {
-            mPhoneNumbers.addAll(contact.getNumbers());
+            for (PhoneNumber phoneNumber : contact.mPhoneNumbers) {
+                if (!mPhoneNumbers.contains(phoneNumber)) {
+                    mPhoneNumbers.add(phoneNumber);
+                } else {
+                    for (PhoneNumber existingPhoneNumber : mPhoneNumbers) {
+                        existingPhoneNumber.merge(phoneNumber);
+                    }
+                }
+            }
+            if (contact.mPrimaryPhoneNumber != null) {
+                mPrimaryPhoneNumber = contact.mPrimaryPhoneNumber.merge(mPrimaryPhoneNumber);
+            }
         }
         return this;
     }
@@ -214,5 +261,93 @@ public class Contact {
             }
         }
         return null;
+    }
+
+    public PhoneNumber getPrimaryPhoneNumber() {
+        return mPrimaryPhoneNumber;
+    }
+
+    public boolean hasPrimaryPhoneNumber() {
+        return mPrimaryPhoneNumber != null;
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeInt(mId);
+        dest.writeBoolean(mIsStarred);
+        dest.writeInt(mPinnedPosition);
+        dest.writeInt(mPhoneNumbers.size());
+        for (PhoneNumber phoneNumber : mPhoneNumbers) {
+            dest.writeParcelable(phoneNumber, flags);
+        }
+        dest.writeParcelable(mPrimaryPhoneNumber, flags);
+        dest.writeString(mDisplayName);
+        dest.writeParcelable(mAvatarThumbnailUri, 0);
+        dest.writeParcelable(mAvatarUri, 0);
+        dest.writeString(mLookupKey);
+        dest.writeBoolean(mIsVoiceMail);
+    }
+
+    public static final Creator<Contact> CREATOR = new Creator<Contact>() {
+        @Override
+        public Contact createFromParcel(Parcel source) {
+            return Contact.fromParcel(source);
+        }
+
+        @Override
+        public Contact[] newArray(int size) {
+            return new Contact[size];
+        }
+    };
+
+    /** Create {@link Contact} object from saved parcelable. */
+    private static Contact fromParcel(Parcel source) {
+        Contact contact = new Contact();
+        contact.mId = source.readInt();
+        contact.mIsStarred = source.readBoolean();
+        contact.mPinnedPosition = source.readInt();
+        int phoneNumberListLength = source.readInt();
+        contact.mPhoneNumbers = new HashSet<>();
+        for (int i = 0; i < phoneNumberListLength; i++) {
+            contact.mPhoneNumbers.add(source.readParcelable(PhoneNumber.class.getClassLoader()));
+        }
+        contact.mPrimaryPhoneNumber = source.readParcelable(PhoneNumber.class.getClassLoader());
+        contact.mDisplayName = source.readString();
+        contact.mAvatarThumbnailUri = source.readParcelable(Uri.class.getClassLoader());
+        contact.mAvatarUri = source.readParcelable(Uri.class.getClassLoader());
+        contact.mLookupKey = source.readString();
+        contact.mIsVoiceMail = source.readBoolean();
+        return contact;
+    }
+
+    @Override
+    public int compareTo(Contact otherContact) {
+        // Use a helper function to classify Contacts
+        int type = getNameType(mDisplayName);
+        int otherType = getNameType(otherContact.mDisplayName);
+        if (type != otherType) {
+            return Integer.compare(type, otherType);
+        }
+        Collator collator = Collator.getInstance();
+        return collator.compare(mDisplayName == null ? "" : mDisplayName,
+                otherContact.mDisplayName == null ? "" : otherContact.mDisplayName);
+    }
+
+    private static int getNameType(String displayName) {
+        // A helper function to classify Contacts
+        if (!TextUtils.isEmpty(displayName)) {
+            if (Character.isLetter(displayName.charAt(0))) {
+                return TYPE_LETTER;
+            }
+            if (Character.isDigit(displayName.charAt(0))) {
+                return TYPE_DIGIT;
+            }
+        }
+        return TYPE_OTHER;
     }
 }
