@@ -18,6 +18,8 @@ package com.android.car.dialer.entity;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
 
@@ -28,33 +30,42 @@ import javax.annotation.Nullable;
 /**
  * Contact phone number and its meta data.
  */
-public class PhoneNumber {
+public class PhoneNumber implements Parcelable {
 
     private final int mType;
     private final I18nPhoneNumberWrapper mI18nPhoneNumber;
     @Nullable
     private final String mLabel;
 
+    private int mId;
+    private int mDataVersion;
+
     /**
      * Creates a new {@link PhoneNumber}.
      *
-     * @param rawNumber A potential phone number.
-     * @param type      The phone number type. See more at
-     *                  {@link ContactsContract.CommonDataKinds.CommonColumns#TYPE}
-     * @param label     The user defined label. See more at
-     *                  {@link ContactsContract.CommonDataKinds.CommonColumns#LABEL}
+     * @param rawNumber   A potential phone number.
+     * @param type        The phone number type. See more at
+     *                    {@link ContactsContract.CommonDataKinds.CommonColumns#TYPE}
+     * @param label       The user defined label. See more at
+     *                    {@link ContactsContract.CommonDataKinds.CommonColumns#LABEL}
+     * @param id          The unique key for raw contact entry containing the phone number entity.
+     * @param dataVersion The dataVersion of the raw contact entry record. See more at {@link
+     *                    ContactsContract.Data#DATA_VERSION}
      */
     public static PhoneNumber newInstance(Context context, String rawNumber, int type,
-            @Nullable String label) {
+            @Nullable String label, int id, int dataVersion) {
         I18nPhoneNumberWrapper i18nPhoneNumber = I18nPhoneNumberWrapper.newInstance(context,
                 rawNumber);
-        return new PhoneNumber(i18nPhoneNumber, type, label);
+        return new PhoneNumber(i18nPhoneNumber, type, label, id, dataVersion);
     }
 
-    private PhoneNumber(I18nPhoneNumberWrapper i18nNumber, int type, @Nullable String label) {
+    private PhoneNumber(I18nPhoneNumberWrapper i18nNumber, int type, @Nullable String label, int id,
+            int dataVersion) {
         mType = type;
         mI18nPhoneNumber = i18nNumber;
         mLabel = label;
+        mId = id;
+        mDataVersion = dataVersion;
     }
 
     @Override
@@ -99,6 +110,20 @@ public class PhoneNumber {
         return mType;
     }
 
+    public int getId() {
+        return mId;
+    }
+
+    public PhoneNumber merge(PhoneNumber phoneNumber) {
+        if (equals(phoneNumber)) {
+            if (mDataVersion < phoneNumber.mDataVersion) {
+                mDataVersion = phoneNumber.mDataVersion;
+                mId = phoneNumber.mId;
+            }
+        }
+        return this;
+    }
+
     /**
      * Gets the user defined label for the the contact method.
      */
@@ -111,4 +136,38 @@ public class PhoneNumber {
     public String toString() {
         return getNumber() + " " + String.valueOf(mLabel);
     }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeInt(mType);
+        dest.writeString(mLabel);
+        dest.writeParcelable(mI18nPhoneNumber, flags);
+        dest.writeInt(mId);
+        dest.writeInt(mDataVersion);
+    }
+
+    public static Creator<PhoneNumber> CREATOR = new Creator<PhoneNumber>() {
+        @Override
+        public PhoneNumber createFromParcel(Parcel source) {
+            int type = source.readInt();
+            String label = source.readString();
+            I18nPhoneNumberWrapper i18nPhoneNumberWrapper = source.readParcelable(
+                    I18nPhoneNumberWrapper.class.getClassLoader());
+            int id = source.readInt();
+            int dataVersion = source.readInt();
+            PhoneNumber phoneNumber = new PhoneNumber(i18nPhoneNumberWrapper, type, label, id,
+                    dataVersion);
+            return phoneNumber;
+        }
+
+        @Override
+        public PhoneNumber[] newArray(int size) {
+            return new PhoneNumber[size];
+        }
+    };
 }

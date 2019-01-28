@@ -18,9 +18,7 @@ package com.android.car.dialer.ui.contact;
 
 import static androidx.car.widget.PagedListView.UNLIMITED_PAGES;
 
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.ContactsContract;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,26 +26,22 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
-import androidx.car.widget.ListItemAdapter;
 import androidx.car.widget.PagedListView;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProviders;
 
 import com.android.car.dialer.R;
 import com.android.car.dialer.entity.Contact;
+import com.android.car.dialer.ui.view.VerticalListDividerDecoration;
 import com.android.car.dialer.ui.common.DialerBaseFragment;
-
-import java.util.List;
 
 /**
  * Contact Fragment.
  */
 public class ContactListFragment extends DialerBaseFragment implements
-        ContactListItemProvider.OnShowContactDetailListener {
+        ContactListAdapter.OnShowContactDetailListener {
     private static final String CONTACT_DETAIL_FRAGMENT_TAG = "CONTACT_DETAIL_FRAGMENT_TAG";
-    private ContactListItemProvider mContactListItemProvider;
-    private ListItemAdapter mContactListAdapter;
-    private View mContactDetailContainer;
+    private ContactListAdapter mContactListAdapter;
 
     public static ContactListFragment newInstance() {
         return new ContactListFragment();
@@ -58,49 +52,26 @@ public class ContactListFragment extends DialerBaseFragment implements
             @Nullable Bundle savedInstanceState) {
         View fragmentView = inflater.inflate(R.layout.contact_list_fragment, container, false);
 
-        mContactListItemProvider = new ContactListItemProvider(
+        mContactListAdapter = new ContactListAdapter(
                 getContext(), /* onShowContactDetailListener= */this);
-        mContactListAdapter = new ListItemAdapter(getContext(), mContactListItemProvider);
         PagedListView pagedListView = fragmentView.findViewById(R.id.list_view);
         pagedListView.setAdapter(mContactListAdapter);
+        pagedListView.getRecyclerView().addItemDecoration(
+                new VerticalListDividerDecoration(getContext(), /* hideLastDivider= */true));
         pagedListView.setMaxPages(UNLIMITED_PAGES);
 
         ContactListViewModel contactListViewModel = ViewModelProviders.of(this).get(
                 ContactListViewModel.class);
-        contactListViewModel.getAllContacts().observe(this, this::onContactListChanged);
-
-        mContactDetailContainer = fragmentView.findViewById(R.id.contact_detail_container);
-        fragmentView.findViewById(R.id.back_button).setOnClickListener(
-                (v) -> hideContactDetailFragment());
+        contactListViewModel.getAllContacts().observe(this, mContactListAdapter::setContactList);
         return fragmentView;
     }
 
-    private void onContactListChanged(List<Contact> contacts) {
-        mContactListItemProvider.setContacts(contacts);
-        mContactListAdapter.notifyDataSetChanged();
-    }
-
-    private void hideContactDetailFragment() {
-        Fragment contactDetailFragment = getChildFragmentManager().findFragmentByTag(
-                CONTACT_DETAIL_FRAGMENT_TAG);
-        if (contactDetailFragment != null) {
-            getChildFragmentManager().beginTransaction().remove(contactDetailFragment).commit();
-        }
-
-        mContactDetailContainer.setVisibility(View.GONE);
-    }
-
     @Override
-    public void onShowContactDetail(int contactId, String lookupKey) {
-        mContactDetailContainer.setVisibility(View.VISIBLE);
-
-        final Uri uri = ContactsContract.Contacts.getLookupUri(contactId, lookupKey);
-        // TODO: pass this Contact entity to ContactDetailFragment instead of having it loaded on
-        // its own.
-        Fragment contactDetailFragment = ContactDetailsFragment.newInstance(uri, null);
-        getChildFragmentManager().beginTransaction().replace(R.id.contact_detail_fragment_container,
-                contactDetailFragment, CONTACT_DETAIL_FRAGMENT_TAG).commit();
+    public void onShowContactDetail(Contact contact) {
+        Fragment contactDetailsFragment = ContactDetailsFragment.newInstance(contact, null);
+        pushContentFragment(contactDetailsFragment, CONTACT_DETAIL_FRAGMENT_TAG);
     }
+
 
     @StringRes
     @Override

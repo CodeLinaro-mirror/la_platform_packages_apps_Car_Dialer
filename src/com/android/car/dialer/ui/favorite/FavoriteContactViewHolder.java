@@ -29,6 +29,8 @@ import com.android.car.dialer.entity.PhoneNumber;
 import com.android.car.dialer.log.L;
 import com.android.car.dialer.telecom.TelecomUtils;
 
+import java.util.List;
+
 import javax.annotation.Nonnull;
 
 /**
@@ -56,23 +58,26 @@ class FavoriteContactViewHolder extends RecyclerView.ViewHolder {
         String displayName = contact.getDisplayName();
         mTitle.setText(displayName);
 
-        if (contact.getNumbers().isEmpty()) {
+        List<PhoneNumber> contactPhoneNumbers = contact.getNumbers();
+        if (contactPhoneNumbers.isEmpty()) {
             L.w(TAG, "contact %s doesn't have any phone number", contact.getDisplayName());
             return;
         }
 
-        PhoneNumber number = contact.getNumbers().get(0);
         String secondaryText;
-        if (!contact.isVoicemail() && contact.getNumbers().size() > 1) {
-            // TODO: show the default entry label when default is supported.
-            secondaryText = context.getString(R.string.type_multiple);
+        if (!contact.isVoicemail() && contactPhoneNumbers.size() > 1) {
+            if (contact.hasPrimaryPhoneNumber()) {
+                secondaryText = context.getString(R.string.primary_number_description,
+                        contact.getPrimaryPhoneNumber().getReadableLabel(context.getResources()));
+            } else {
+                secondaryText = context.getString(R.string.type_multiple);
+            }
         } else {
-            secondaryText = String.valueOf(number.getReadableLabel(context.getResources()));
+            secondaryText = String.valueOf(
+                    contactPhoneNumbers.get(0).getReadableLabel(context.getResources()));
         }
-
         mText.setText(secondaryText);
-        itemView.setTag(number.getNumber());
 
-        TelecomUtils.setContactBitmapAsync(context, mIcon, displayName, number.getNumber());
+        TelecomUtils.setContactBitmapAsync(context, mIcon, contact, null);
     }
 }

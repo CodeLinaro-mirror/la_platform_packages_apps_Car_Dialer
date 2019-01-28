@@ -13,9 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.car.dialer.telecom;
 
 import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -38,6 +41,7 @@ import com.android.car.apps.common.LetterTileDrawable;
 import com.android.car.dialer.R;
 import com.android.car.dialer.entity.CallDetail;
 import com.android.car.dialer.entity.Contact;
+import com.android.car.dialer.entity.PhoneNumber;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
@@ -112,7 +116,7 @@ public class TelecomUtils {
      * @see TelephonyManager#getVoiceMailNumber()
      */
     public static boolean isVoicemailNumber(Context context, String number) {
-        return getVoicemailNumber(context).equals(number);
+        return !TextUtils.isEmpty(number) && number.equals(getVoicemailNumber(context));
     }
 
     public static TelephonyManager getTelephonyManager(Context context) {
@@ -229,7 +233,8 @@ public class TelecomUtils {
         CharSequence label = TelecomUtils.getTypeFromNumber(context, number);
         String text;
         if (callState == Call.STATE_ACTIVE) {
-            long duration = System.currentTimeMillis() - callDetail.getConnectTimeMillis();
+            long duration = callDetail.getConnectTimeMillis() > 0 ? System.currentTimeMillis()
+                    - callDetail.getConnectTimeMillis() : 0;
             String durationString = DateUtils.formatElapsedTime(duration / 1000);
             if (!TextUtils.isEmpty(durationString) && !TextUtils.isEmpty(label)) {
                 text = context.getString(R.string.phone_label_with_info, label, durationString);
@@ -291,35 +296,57 @@ public class TelecomUtils {
     }
 
     /**
-     * Sets a Contact avatar onto the provided {@param icon}. The first letter of the contact
-     * {@param name} will be used as a fallback resource if avatar loading fails.
-     *
-     * @param number The phone number of the contact which will be used for looking up the contact.
+     * Sets a Contact avatar onto the provided {@param icon}. The first letter of the contact's
+     * display name or {@param fallbackDisplayName} will be used as a fallback resource if avatar
+     * loading fails.
      */
-    @Nullable
-    public static void setContactBitmapAsync(Context context,
-            final ImageView icon, final @Nullable String name, final String number) {
-        Resources r = icon.getResources();
-        Contact contact = InMemoryPhoneBook.get().lookupContactEntry(number);
-        LetterTileDrawable letterTileDrawable = new LetterTileDrawable(r);
-        letterTileDrawable.setContactDetails(name, number);
-        letterTileDrawable.setIsCircular(true);
-        if (contact != null) {
-            Uri uri = null;
-            if (contact.getAvatarThumbnailUri() != null) {
-                uri = contact.getAvatarThumbnailUri();
-            } else if (contact.getAvatarUri() != null) {
-                uri = contact.getAvatarUri();
-            }
+    public static void setContactBitmapAsync(
+            Context context,
+            final ImageView icon,
+            @Nullable final Contact contact,
+            @Nullable final String fallbackDisplayName) {
+        Uri avatarUri = contact != null ? contact.getAvatarUri() : null;
+        String displayName = contact != null ? contact.getDisplayName() : fallbackDisplayName;
 
+        setContactBitmapAsync(context, icon, avatarUri, displayName);
+    }
+
+    /**
+     * Sets a Contact avatar onto the provided {@param icon}. The first letter of the contact's
+     * display name will be used as a fallback resource if avatar loading fails.
+     */
+    public static void setContactBitmapAsync(
+            Context context,
+            final ImageView icon,
+            final Uri avatarUri,
+            final String displayName) {
+        LetterTileDrawable letterTileDrawable = new LetterTileDrawable(context.getResources());
+        letterTileDrawable.setIsCircular(true);
+
+        if (avatarUri != null) {
             Glide.with(context)
-                    .load(uri)
+                    .load(avatarUri)
                     .apply(new RequestOptions().circleCrop().error(letterTileDrawable))
                     .into(icon);
-        } else {
-            icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-            icon.setImageDrawable(letterTileDrawable);
+            return;
         }
+
+        // Use the letter tile as avatar if there is no avatar available from content provider.
+        letterTileDrawable.setContactDetails(displayName, displayName);
+        icon.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        icon.setImageDrawable(letterTileDrawable);
+    }
+
+    /** Set the given phone number as the primary phone number for its associated contact. */
+    public static void setAsPrimaryPhoneNumber(Context context, PhoneNumber phoneNumber) {
+        // Update the primary values in the data record.
+        ContentValues values = new ContentValues(1);
+        values.put(ContactsContract.Data.IS_SUPER_PRIMARY, 1);
+        values.put(ContactsContract.Data.IS_PRIMARY, 1);
+
+        context.getContentResolver().update(
+                ContentUris.withAppendedId(ContactsContract.Data.CONTENT_URI, phoneNumber.getId()),
+                values, null, null);
     }
 
 }

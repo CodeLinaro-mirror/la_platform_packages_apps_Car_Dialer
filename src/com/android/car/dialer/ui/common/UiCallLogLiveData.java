@@ -17,6 +17,7 @@
 package com.android.car.dialer.ui.common;
 
 import android.content.Context;
+import android.net.Uri;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 
@@ -114,10 +115,9 @@ public class UiCallLogLiveData extends MediatorLiveData<List<UiCallLog>> {
             String number = phoneCallLog.getPhoneNumberString();
             String relativeTime = getRelativeTime(phoneCallLog.getLastCallEndTimestamp());
             if (TelecomUtils.isVoicemailNumber(mContext, number)) {
-                String title = appendCount(mContext.getString(R.string.voicemail),
-                        phoneCallLog.getNumberOfCallRecords());
+                String title = mContext.getString(R.string.voicemail);
                 UiCallLog uiCallLog = new UiCallLog(title,
-                        relativeTime, number, phoneCallLog.getAllCallRecords());
+                        relativeTime, number, null, phoneCallLog.getAllCallRecords());
                 uiCallLogs.add(uiCallLog);
                 continue;
             }
@@ -131,22 +131,18 @@ public class UiCallLogLiveData extends MediatorLiveData<List<UiCallLog>> {
             } else {
                 title = mContext.getString(R.string.unknown);
             }
-            title = appendCount(title, phoneCallLog.getNumberOfCallRecords());
             PhoneNumber phoneNumber = contact != null ? contact.getPhoneNumber(number) : null;
 
             UiCallLog uiCallLog = new UiCallLog(
                     title,
                     getSecondaryText(getType(phoneNumber), relativeTime),
                     number,
+                    contact != null ? contact.getAvatarUri() : null,
                     phoneCallLog.getAllCallRecords());
 
             uiCallLogs.add(uiCallLog);
         }
         return uiCallLogs;
-    }
-
-    private String appendCount(String title, int count) {
-        return count > 1 ? title + " (" + count + ")" : title;
     }
 
     private String getRelativeTime(long millis) {
