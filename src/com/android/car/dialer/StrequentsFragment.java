@@ -226,9 +226,12 @@ public class StrequentsFragment extends Fragment {
         @Override
         public void onChange(boolean selfChange, Uri uri) {
             if (Log.isLoggable(TAG, Log.DEBUG)) {
-                Log.d(TAG, "SpeedDialContentObserver onChange() called. Reloading strequents.");
+                Log.d(TAG, "SpeedDialContentObserver onChange() called.");
             }
-            mSpeedialCursorLoader.startLoading();
+
+            // CarDialer UI may be hung if StrequentsFragment observes
+            // too many changes in CALL_TYPE_SPEED_DIAL.
+            // mSpeedialCursorLoader.startLoading();
         }
     }
 
@@ -248,9 +251,12 @@ public class StrequentsFragment extends Fragment {
         @Override
         public void onChange(boolean selfChange, Uri uri) {
             if (Log.isLoggable(TAG, Log.DEBUG)) {
-                Log.d(TAG, "CallLogContentObserver onChange() called. Reloading call log.");
+                Log.d(TAG, "CallLogContentObserver onChange() called.");
             }
-            mCallLogCursorLoader.startLoading();
+
+            // CarDialer UI may be hung if StrequentsFragment observes
+            // too many changes in CALL_TYPE_ALL.
+            // mCallLogCursorLoader.startLoading();
         }
     }
 
