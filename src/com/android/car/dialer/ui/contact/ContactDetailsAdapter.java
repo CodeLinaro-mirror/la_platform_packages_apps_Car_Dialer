@@ -30,11 +30,12 @@ import androidx.car.widget.PagedListView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.car.dialer.R;
-import com.android.car.dialer.entity.Contact;
-import com.android.car.dialer.entity.PhoneNumber;
 import com.android.car.dialer.log.L;
-import com.android.car.dialer.telecom.TelecomUtils;
 import com.android.car.dialer.ui.view.ListItemOutlineResolver;
+import com.android.car.telephony.common.Contact;
+import com.android.car.telephony.common.PhoneNumber;
+import com.android.car.telephony.common.TelecomUtils;
+
 
 class ContactDetailsAdapter extends RecyclerView.Adapter<ContactDetailsViewHolder>
         implements PagedListView.ItemCap {
@@ -114,9 +115,15 @@ class ContactDetailsAdapter extends RecyclerView.Adapter<ContactDetailsViewHolde
                 break;
             case ID_CONTENT:
                 PhoneNumber phoneNumber = mContact.getNumbers().get(position - 1);
-                viewHolder.title.setText(
-                        phoneNumber.getReadableLabel(mContext.getResources()));  // Type.
-                viewHolder.text.setText(phoneNumber.getNumber());  // Number.
+                viewHolder.title.setText(phoneNumber.getNumber());  // Number
+                // Present the phone number type.
+                CharSequence readableLabel = phoneNumber.getReadableLabel(mContext.getResources());
+                if (phoneNumber.isPrimary()) {
+                    viewHolder.text.setText(
+                            mContext.getString(R.string.primary_number_description, readableLabel));
+                } else {
+                    viewHolder.text.setText(readableLabel);
+                }
                 viewHolder.leftIcon.setImageResource(R.drawable.ic_phone);
                 viewHolder.card.setOnClickListener(v -> {
                     Intent callIntent = new Intent(Intent.ACTION_CALL);
