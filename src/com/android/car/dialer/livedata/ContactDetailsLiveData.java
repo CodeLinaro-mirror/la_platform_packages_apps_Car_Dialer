@@ -24,8 +24,9 @@ import android.provider.ContactsContract;
 
 import androidx.annotation.NonNull;
 
-import com.android.car.dialer.common.ObservableAsyncQuery;
-import com.android.car.dialer.entity.Contact;
+import com.android.car.telephony.common.AsyncQueryLiveData;
+import com.android.car.telephony.common.Contact;
+import com.android.car.telephony.common.ObservableAsyncQuery;
 
 /** {@link androidx.lifecycle.LiveData} for contact details that observes the contact change. */
 public class ContactDetailsLiveData extends AsyncQueryLiveData<Contact> {
