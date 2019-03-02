@@ -18,8 +18,7 @@ limitations under the License.
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="@dimen/car_action_bar_height"
-    android:background="@color/phone_theme"
+    android:layout_height="@dimen/in_call_controller_bar_height"
     android:elevation = "@dimen/in_call_card_elevation">
     <ImageView
         android:id="@+id/mute_button"
@@ -64,6 +63,7 @@ limitations under the License.
         android:id="@+id/voice_channel_button"
         android:layout_width="@dimen/in_call_button_size"
         android:layout_height="@dimen/in_call_button_size"
+        android:background="@drawable/dialer_ripple_background"
         android:scaleType="center"
         android:src="@drawable/ic_bluetooth"
         android:tint="@color/primary_icon_color"
@@ -75,8 +75,8 @@ limitations under the License.
 
     <ImageView
         android:id="@+id/voice_channel_chevron"
-        android:layout_width="@dimen/car_secondary_icon_size"
-        android:layout_height="@dimen/car_secondary_icon_size"
+        android:layout_width="@dimen/in_call_controller_secondary_icon_size"
+        android:layout_height="@dimen/in_call_controller_secondary_icon_size"
         android:scaleType="fitCenter"
         android:src="@drawable/ic_arrow_down"
         android:tint="@color/primary_icon_color"
@@ -89,6 +89,7 @@ limitations under the License.
         android:id="@+id/pause_button"
         android:layout_width="@dimen/in_call_button_size"
         android:layout_height="@dimen/in_call_button_size"
+        android:background="@drawable/dialer_ripple_background"
         android:scaleType="center"
         android:src="@drawable/ic_call_state_switch"
         android:tint="@color/primary_icon_color"

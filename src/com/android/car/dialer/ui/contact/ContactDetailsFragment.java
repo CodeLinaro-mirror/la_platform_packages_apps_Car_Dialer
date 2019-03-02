@@ -13,34 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.car.dialer.ui.contact;
 
-import android.content.Intent;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.ContactsContract;
-import android.util.Log;
-import android.util.Pair;
+import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.TextView;
 
-import androidx.annotation.ColorInt;
 import androidx.annotation.Nullable;
-import androidx.car.util.ListItemBackgroundResolver;
+import androidx.annotation.StringRes;
 import androidx.car.widget.PagedListView;
-import androidx.loader.app.LoaderManager;
-import androidx.loader.content.CursorLoader;
-import androidx.loader.content.Loader;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.car.dialer.R;
-import com.android.car.dialer.log.L;
-import com.android.car.dialer.telecom.TelecomUtils;
 import com.android.car.dialer.ui.common.DialerBaseFragment;
+import com.android.car.dialer.ui.view.VerticalListDividerDecoration;
+import com.android.car.telephony.common.Contact;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,44 +46,76 @@ import java.util.List;
  * primarily used to respond to the results of search queries but supplyig it with the content://
  * uri of a contact should work too.
  */
-public class ContactDetailsFragment extends DialerBaseFragment
-        implements LoaderManager.LoaderCallbacks<Cursor> {
-    private static final String TAG = "CD.ContactDetailsFrag";
-    private static final String TELEPHONE_URI_PREFIX = "tel:";
+public class ContactDetailsFragment extends DialerBaseFragment {
+    private static final String TAG = "CD.ContactDetailsFragment";
 
-    private static final int DETAILS_LOADER_QUERY_ID = 1;
-    private static final int PHONE_LOADER_QUERY_ID = 2;
+    // Key to load and save the contact entity instance.
+    private static final String KEY_CONTACT_ENTITY = "ContactEntity";
 
-    private static final String KEY_URI = "uri";
-
-    private static final String[] CONTACT_DETAILS_PROJECTION = {
-            ContactsContract.Contacts._ID,
-            ContactsContract.Contacts.DISPLAY_NAME,
-            ContactsContract.Contacts.PHOTO_URI,
-            ContactsContract.Contacts.HAS_PHONE_NUMBER
-    };
+    // Key to load the contact details by passing in the content provider query uri.
+    private static final String KEY_CONTACT_QUERY_URI = "ContactQueryUri";
 
     private PagedListView mListView;
-    private List<RecyclerView.OnScrollListener> mOnScrollListeners = new ArrayList<>();
+    private final List<RecyclerView.OnScrollListener> mOnScrollListeners = new ArrayList<>();
 
-    public static ContactDetailsFragment newInstance(Uri uri,
-            @Nullable RecyclerView.OnScrollListener listener) {
+    private Contact mContact;
+    private Uri mContactLookupUri;
+    private LiveData<Contact> mContactDetailsLiveData;
+
+    public static ContactDetailsFragment newInstance(
+            Uri uri, @Nullable RecyclerView.OnScrollListener listener) {
         ContactDetailsFragment fragment = new ContactDetailsFragment();
-        if (listener != null) {
-            fragment.addOnScrollListener(listener);
-        }
-
+        fragment.addOnScrollListener(listener);
         Bundle args = new Bundle();
-        args.putParcelable(KEY_URI, uri);
+        args.putParcelable(KEY_CONTACT_QUERY_URI, uri);
         fragment.setArguments(args);
-
         return fragment;
+    }
+
+    public static ContactDetailsFragment newInstance(
+            Contact contact, @Nullable RecyclerView.OnScrollListener listener) {
+        ContactDetailsFragment fragment = new ContactDetailsFragment();
+        fragment.addOnScrollListener(listener);
+        Bundle args = new Bundle();
+        args.putParcelable(KEY_CONTACT_ENTITY, contact);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+
+        mContact = getArguments().getParcelable(KEY_CONTACT_ENTITY);
+        mContactLookupUri = getArguments().getParcelable(KEY_CONTACT_QUERY_URI);
+        if (mContact == null) {
+            mContact = savedInstanceState.getParcelable(KEY_CONTACT_ENTITY);
+        }
+        if (mContact != null) {
+            mContactLookupUri = mContact.getLookupUri();
+        }
+        ContactDetailsViewModel contactDetailsViewModel = ViewModelProviders.of(this).get(
+                ContactDetailsViewModel.class);
+        mContactDetailsLiveData = contactDetailsViewModel.getContactDetailsLiveData(
+                mContactLookupUri);
+        mContactDetailsLiveData.observe(this, contact -> getArguments().clear());
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater menuInflater) {
+        menuInflater.inflate(R.menu.contact_edit, menu);
+        MenuItem defaultNumberMenuItem = menu.findItem(R.id.menu_contact_default_number);
+        ContactDefaultNumberActionProvider contactDefaultNumberActionProvider =
+                (ContactDefaultNumberActionProvider) defaultNumberMenuItem.getActionProvider();
+        contactDefaultNumberActionProvider.setContact(mContact);
+        mContactDetailsLiveData.observe(this, contactDefaultNumberActionProvider::setContact);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.contact_details, container, false);
+        return inflater.inflate(R.layout.contact_details_fragment, container, false);
     }
 
     @Override
@@ -95,26 +123,21 @@ public class ContactDetailsFragment extends DialerBaseFragment
         mListView = view.findViewById(R.id.list_view);
 
         RecyclerView recyclerView = mListView.getRecyclerView();
+        PagedListView.LayoutParams layoutParams =
+                (PagedListView.LayoutParams) recyclerView.getLayoutParams();
+        layoutParams.gravity = Gravity.CENTER_HORIZONTAL;
+        layoutParams.width = PagedListView.LayoutParams.WRAP_CONTENT;
+        recyclerView.addItemDecoration(new VerticalListDividerDecoration(getContext(), true));
+
         for (RecyclerView.OnScrollListener listener : mOnScrollListeners) {
             recyclerView.addOnScrollListener(listener);
         }
-
         mOnScrollListeners.clear();
-    }
 
-    @Override
-    public void onStart() {
-        super.onStart();
-        L.d(TAG, "onStart");
-        hideActionBar();
-        getLoaderManager().initLoader(DETAILS_LOADER_QUERY_ID, null, this);
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        L.d(TAG, "onStop");
-        showActionBar();
+        ContactDetailsAdapter contactDetailsAdapter = new ContactDetailsAdapter(getContext(),
+                mContact);
+        mListView.setAdapter(contactDetailsAdapter);
+        mContactDetailsLiveData.observe(this, contactDetailsAdapter::setContact);
     }
 
     /**
@@ -123,7 +146,10 @@ public class ContactDetailsFragment extends DialerBaseFragment
      *
      * @see RecyclerView#addOnScrollListener(RecyclerView.OnScrollListener)
      */
-    public void addOnScrollListener(RecyclerView.OnScrollListener onScrollListener) {
+    public void addOnScrollListener(@Nullable RecyclerView.OnScrollListener onScrollListener) {
+        if (onScrollListener == null) {
+            return;
+        }
         // If the view has not been created yet, then queue the setting of the scroll listener.
         if (mListView == null) {
             mOnScrollListeners.add(onScrollListener);
@@ -134,212 +160,21 @@ public class ContactDetailsFragment extends DialerBaseFragment
     }
 
     @Override
-    public void onDestroy() {
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putParcelable(KEY_CONTACT_ENTITY, mContactDetailsLiveData.getValue());
+    }
+
+    @Override
+    public void onDestroyView() {
         // Clear all scroll listeners.
         mListView.getRecyclerView().removeOnScrollListener(null);
-        super.onDestroy();
+        super.onDestroyView();
     }
 
+    @StringRes
     @Override
-    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        L.d(TAG, "onCreateLoader id = %s", id);
-
-        if (id != DETAILS_LOADER_QUERY_ID) {
-            return null;
-        }
-
-        Uri contactUri = getArguments().getParcelable(KEY_URI);
-        return new CursorLoader(getContext(), contactUri, CONTACT_DETAILS_PROJECTION,
-                null /* selection */, null /* selectionArgs */, null /* sortOrder */);
-    }
-
-    @Override
-    public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
-        L.d(TAG, "onLoadFinished");
-        if (cursor.moveToFirst()) {
-            mListView.setAdapter(new ContactDetailsAdapter(cursor));
-        }
-    }
-
-    @Override
-    public void onLoaderReset(Loader loader) {
-    }
-
-    private class ContactDetailViewHolder extends RecyclerView.ViewHolder {
-        public View card;
-        public ImageView leftIcon;
-        public TextView title;
-        public TextView text;
-        public ImageView avatar;
-        public View divier;
-
-        public ContactDetailViewHolder(View v) {
-            super(v);
-            card = v.findViewById(R.id.card);
-            leftIcon = v.findViewById(R.id.icon);
-            title = v.findViewById(R.id.title);
-            text = v.findViewById(R.id.text);
-            avatar = v.findViewById(R.id.avatar);
-            divier = v.findViewById(R.id.divider);
-        }
-    }
-
-    private class ContactDetailsAdapter extends RecyclerView.Adapter<ContactDetailViewHolder>
-            implements PagedListView.ItemCap {
-
-        private static final int ID_HEADER = 1;
-        private static final int ID_CONTENT = 2;
-
-        private final String mContactName;
-        @ColorInt
-        private int mIconTint;
-
-        private List<Pair<String, String>> mPhoneNumbers = new ArrayList<>();
-
-        public ContactDetailsAdapter(Cursor cursor) {
-            super();
-
-            mIconTint = getContext().getColor(R.color.contact_details_icon_tint);
-
-            int idColIdx = cursor.getColumnIndex(ContactsContract.Contacts._ID);
-            String contactId = cursor.getString(idColIdx);
-            int nameColIdx = cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME);
-            mContactName = cursor.getString(nameColIdx);
-            int hasPhoneColIdx = cursor.getColumnIndex(ContactsContract.Contacts.HAS_PHONE_NUMBER);
-            boolean hasPhoneNumber = Integer.parseInt(cursor.getString(hasPhoneColIdx)) > 0;
-
-            if (!hasPhoneNumber) {
-                return;
-            }
-
-            // Fetch the phone number from the contacts db using another loader.
-            LoaderManager.getInstance(ContactDetailsFragment.this).initLoader(PHONE_LOADER_QUERY_ID,
-                    null,
-                    new LoaderManager.LoaderCallbacks<Cursor>() {
-                        @Override
-                        public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-                            return new CursorLoader(getContext(),
-                                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                                    null, /* All columns **/
-                                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
-                                    new String[]{contactId},
-                                    null /* sortOrder */);
-                        }
-
-                        public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
-                            if (cursor == null) {
-                                return;
-                            }
-
-                            int itemCount = getItemCount();
-                            cursor.moveToPosition(-1);
-                            while (cursor.moveToNext()) {
-                                int typeColIdx = cursor.getColumnIndex(
-                                        ContactsContract.CommonDataKinds.Phone.TYPE);
-                                int type = cursor.getInt(typeColIdx);
-                                int numberColIdx = cursor.getColumnIndex(
-                                        ContactsContract.CommonDataKinds.Phone.NUMBER);
-                                String number = cursor.getString(numberColIdx);
-                                String numberType;
-                                switch (type) {
-                                    case ContactsContract.CommonDataKinds.Phone.TYPE_HOME:
-                                        numberType = getString(R.string.type_home);
-                                        break;
-                                    case ContactsContract.CommonDataKinds.Phone.TYPE_WORK:
-                                        numberType = getString(R.string.type_work);
-                                        break;
-                                    case ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE:
-                                        numberType = getString(R.string.type_mobile);
-                                        break;
-                                    default:
-                                        numberType = getString(R.string.type_other);
-                                }
-                                mPhoneNumbers.add(new Pair<>(numberType,
-                                        TelecomUtils.getFormattedNumber(getContext(), number)));
-                                notifyItemInserted(mPhoneNumbers.size());
-                            }
-                            // Notify  header to load avatar.
-                            notifyItemRangeChanged(0, itemCount);
-                        }
-
-                        public void onLoaderReset(Loader loader) {
-                        }
-                    });
-        }
-
-        @Override
-        public int getItemViewType(int position) {
-            return position == 0 ? ID_HEADER : ID_CONTENT;
-        }
-
-        @Override
-        public void setMaxItems(int maxItems) {
-            // Ignore.
-        }
-
-        @Override
-        public int getItemCount() {
-            return mPhoneNumbers.size() + 1;  // +1 for the header row.
-        }
-
-        @Override
-        public ContactDetailViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            int layoutResId;
-            switch (viewType) {
-                case ID_HEADER:
-                    layoutResId = R.layout.contact_detail_name_image;
-                    break;
-                case ID_CONTENT:
-                    layoutResId = R.layout.contact_details_number;
-                    break;
-                default:
-                    Log.e(TAG, "Unknown view type " + viewType);
-                    return null;
-            }
-
-            View view = LayoutInflater.from(parent.getContext()).inflate(layoutResId, parent,
-                    false);
-            return new ContactDetailViewHolder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(ContactDetailViewHolder viewHolder, int position) {
-            switch (viewHolder.getItemViewType()) {
-                case ID_HEADER:
-                    viewHolder.title.setText(mContactName);
-                    if (!mPhoneNumbers.isEmpty()) {
-                        String firstNumber = mPhoneNumbers.get(0).second;
-                        TelecomUtils.setContactBitmapAsync(getContext(), viewHolder.avatar,
-                                mContactName, firstNumber);
-                    }
-                    // Just in case a viewholder object gets recycled.
-                    viewHolder.card.setOnClickListener(null);
-                    break;
-                case ID_CONTENT:
-                    Pair<String, String> data = mPhoneNumbers.get(position - 1);
-                    viewHolder.title.setText(data.second);  // Type.
-                    viewHolder.text.setText(data.first);  // Number.
-                    viewHolder.leftIcon.setImageResource(R.drawable.ic_phone);
-                    viewHolder.leftIcon.setColorFilter(mIconTint);
-                    viewHolder.card.setOnClickListener(v -> {
-                        Intent callIntent = new Intent(Intent.ACTION_CALL);
-                        callIntent.setData(Uri.parse(TELEPHONE_URI_PREFIX + data.second));
-                        getContext().startActivity(callIntent);
-                    });
-                    break;
-                default:
-                    Log.e(TAG, "Unknown view type " + viewHolder.getItemViewType());
-                    return;
-            }
-
-            if (position == (getItemCount() - 1)) {
-                // hide divider for last item.
-                viewHolder.divier.setVisibility(View.GONE);
-            } else {
-                viewHolder.divier.setVisibility(View.VISIBLE);
-            }
-            ListItemBackgroundResolver.setBackground(viewHolder.card,
-                    viewHolder.getAdapterPosition(), getItemCount());
-        }
+    protected int getActionBarTitleRes() {
+        return R.string.contacts_title;
     }
 }

@@ -20,16 +20,15 @@ import android.content.Context;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
-
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.android.car.dialer.R;
-import com.android.car.dialer.entity.Contact;
-import com.android.car.dialer.entity.PhoneNumber;
 import com.android.car.dialer.log.L;
-import com.android.car.dialer.telecom.TelecomUtils;
+import com.android.car.telephony.common.TelecomUtils;
+import com.android.car.telephony.common.Contact;
+import com.android.car.telephony.common.PhoneNumber;
 
 import javax.annotation.Nonnull;
+import java.util.List;
 
 /**
  * A {@link RecyclerView.ViewHolder ViewHolder} that will hold layouts for favorite contacts list
@@ -56,23 +55,26 @@ class FavoriteContactViewHolder extends RecyclerView.ViewHolder {
         String displayName = contact.getDisplayName();
         mTitle.setText(displayName);
 
-        if (contact.getNumbers().isEmpty()) {
+        List<PhoneNumber> contactPhoneNumbers = contact.getNumbers();
+        if (contactPhoneNumbers.isEmpty()) {
             L.w(TAG, "contact %s doesn't have any phone number", contact.getDisplayName());
             return;
         }
 
-        PhoneNumber number = contact.getNumbers().get(0);
         String secondaryText;
-        if (!contact.isVoicemail() && contact.getNumbers().size() > 1) {
-            // TODO: show the default entry label when default is supported.
-            secondaryText = context.getString(R.string.type_multiple);
+        if (!contact.isVoicemail() && contactPhoneNumbers.size() > 1) {
+            if (contact.hasPrimaryPhoneNumber()) {
+                secondaryText = context.getString(R.string.primary_number_description,
+                        contact.getPrimaryPhoneNumber().getReadableLabel(context.getResources()));
+            } else {
+                secondaryText = context.getString(R.string.type_multiple);
+            }
         } else {
-            secondaryText = String.valueOf(number.getReadableLabel(context.getResources()));
+            secondaryText = String.valueOf(
+                    contactPhoneNumbers.get(0).getReadableLabel(context.getResources()));
         }
-
         mText.setText(secondaryText);
-        itemView.setTag(number.getNumber());
 
-        TelecomUtils.setContactBitmapAsync(context, mIcon, displayName, number.getNumber());
+        TelecomUtils.setContactBitmapAsync(context, mIcon, contact, null);
     }
 }

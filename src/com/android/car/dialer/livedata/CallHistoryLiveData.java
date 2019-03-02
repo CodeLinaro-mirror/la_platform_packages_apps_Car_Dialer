@@ -22,10 +22,10 @@ import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.CallLog;
-import android.telephony.PhoneNumberUtils;
 
-import com.android.car.dialer.common.ObservableAsyncQuery;
-import com.android.car.dialer.entity.PhoneCallLog;
+import com.android.car.telephony.common.AsyncQueryLiveData;
+import com.android.car.telephony.common.ObservableAsyncQuery;
+import com.android.car.telephony.common.PhoneCallLog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -92,11 +92,7 @@ public class CallHistoryLiveData extends AsyncQueryLiveData<List<PhoneCallLog>> 
             PhoneCallLog previousCallLog = resultList.isEmpty() ? null : resultList.get(
                     resultList.size() - 1);
 
-            if (previousCallLog != null
-                    && PhoneNumberUtils.compare(
-                    previousCallLog.getPhoneNumberString(), phoneCallLog.getPhoneNumberString())) {
-                previousCallLog.merge(phoneCallLog);
-            } else {
+            if (previousCallLog == null || !previousCallLog.merge(phoneCallLog)) {
                 resultList.add(phoneCallLog);
             }
         }

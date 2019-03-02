@@ -20,33 +20,34 @@ import android.app.Activity;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 import androidx.fragment.app.Fragment;
 
 import com.android.car.dialer.R;
+import com.android.car.theme.Themes;
 
 /**
  * The base class for top level Dialer Fragments.
  */
-public class DialerBaseFragment extends Fragment {
+public abstract class DialerBaseFragment extends Fragment {
 
     /**
      * Interface for Dialer top level fragment's parent to implement.
      */
     public interface DialerFragmentParent {
 
-        /** Sets the background drawable*/
+        /** Sets the background drawable. */
         void setBackground(Drawable background);
 
-        /**
-         * Sets the visibility of action bar.
-         */
+        /** Sets the visibility of action bar. */
         void setActionBarVisibility(boolean isVisible);
 
-        /**
-         * Sets the title of the action bar.
-         */
+        /** Sets the title of the action bar. */
         void setActionBarTitle(@StringRes int titleRes);
+
+        /** Push a fragment to the back stack. Update action bar accordingly. */
+        void pushContentFragment(Fragment fragment, String fragmentTag);
     }
 
     @Override
@@ -66,9 +67,7 @@ public class DialerBaseFragment extends Fragment {
         }
     }
 
-    /**
-     * Sets the title of the action bar.
-     */
+    /** Sets the title of the action bar. */
     protected void setActionBarTitle() {
         Activity parentActivity = getActivity();
         if (parentActivity instanceof DialerFragmentParent) {
@@ -77,38 +76,24 @@ public class DialerBaseFragment extends Fragment {
     }
 
     /**
-     * Hides the action bar of its parent Activity.
-     */
-    protected void hideActionBar() {
-        Activity parentActivity = getActivity();
-        if (parentActivity instanceof DialerFragmentParent) {
-            ((DialerFragmentParent) parentActivity).setActionBarVisibility(false);
-        }
-    }
-
-    /**
-     * Shows the action bar of its parent Activity.
-     */
-    protected void showActionBar() {
-        Activity parentActivity = getActivity();
-        if (parentActivity instanceof DialerFragmentParent) {
-            ((DialerFragmentParent) parentActivity).setActionBarVisibility(true);
-        }
-    }
-
-    /**
      * Returns the full screen background for its parent Activity. Override this function to
      * change the background.
      */
     protected Drawable getFullScreenBackgroundColor() {
-        return new ColorDrawable(getContext().getColor(R.color.phone_theme));
+        return new ColorDrawable(Themes.getAttrColor(getContext(), R.attr.background));
+    }
+
+    /** Push a fragment to the back stack. Update action bar accordingly. */
+    protected void pushContentFragment(@NonNull Fragment fragment, String fragmentTag) {
+        Activity parentActivity = getActivity();
+        if (parentActivity instanceof DialerFragmentParent) {
+            ((DialerFragmentParent) parentActivity).pushContentFragment(fragment, fragmentTag);
+        }
     }
 
     /**
      * Return the string resources id for the action bar title.
      */
     @StringRes
-    protected int getActionBarTitleRes() {
-        return R.string.phone_app_name;
-    }
+    protected abstract int getActionBarTitleRes();
 }

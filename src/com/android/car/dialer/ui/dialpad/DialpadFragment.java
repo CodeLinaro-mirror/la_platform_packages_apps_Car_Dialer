@@ -34,13 +34,12 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
-import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProviders;
 
 import com.android.car.apps.common.FabDrawable;
 import com.android.car.dialer.R;
 import com.android.car.dialer.log.L;
-import com.android.car.dialer.telecom.TelecomUtils;
+import com.android.car.telephony.common.TelecomUtils;
 import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.dialer.ui.activecall.InCallViewModel;
 import com.android.car.dialer.ui.common.DialerBaseFragment;
@@ -95,19 +94,18 @@ public class DialpadFragment extends DialerBaseFragment implements
      */
     private static final int MODE_IN_CALL = 1;
 
-    /**
-     * Shows dialpad for dialing.
-     */
+    /** Shows dialpad for dialing. */
     private static final int MODE_DIAL = 2;
+
+    private static final int MODE_EMERGENCY = 3;
 
     private TextView mTitleView;
     private int mMode;
     private StringBuffer mNumber = new StringBuffer(MAX_DIAL_NUMBER);
     private ToneGenerator mToneGenerator;
     private boolean mDTMFToneEnabled;
-    /**
-     * An active call which this DialpadFragment is serving for.
-     */
+
+    /** An active call which this DialpadFragment is serving for. */
     @Nullable
     private Call mActiveCall;
 
@@ -117,15 +115,17 @@ public class DialpadFragment extends DialerBaseFragment implements
      * @param dialNumber The given number as the one to dial.
      */
     public static DialpadFragment newPlaceCallDialpad(@Nullable String dialNumber) {
-        DialpadFragment fragment = new DialpadFragment();
-
-        Bundle args = new Bundle();
-        args.putInt(DIALPAD_MODE_KEY, MODE_DIAL);
+        DialpadFragment fragment = newDialpad(MODE_DIAL);
+        // We don't want the dial number to retain across fragment destroy and creation.
         if (!TextUtils.isEmpty(dialNumber)) {
-            args.putString(DIAL_NUMBER_KEY, dialNumber);
+            fragment.mNumber.append(dialNumber);
         }
-        fragment.setArguments(args);
         return fragment;
+    }
+
+    /** Creates a new instance used for emergency dialing. */
+    public static DialpadFragment newEmergencyDialpad() {
+        return newDialpad(MODE_EMERGENCY);
     }
 
     /**
@@ -133,10 +133,14 @@ public class DialpadFragment extends DialerBaseFragment implements
      * dialing extension number, etc.
      */
     public static DialpadFragment newInCallDialpad() {
+        return newDialpad(MODE_IN_CALL);
+    }
+
+    private static DialpadFragment newDialpad(int mode) {
         DialpadFragment fragment = new DialpadFragment();
 
         Bundle args = new Bundle();
-        args.putInt(DIALPAD_MODE_KEY, MODE_IN_CALL);
+        args.putInt(DIALPAD_MODE_KEY, mode);
         fragment.setArguments(args);
         return fragment;
     }
@@ -151,29 +155,24 @@ public class DialpadFragment extends DialerBaseFragment implements
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
         mMode = getArguments().getInt(DIALPAD_MODE_KEY);
-        L.d(TAG, "onCreateView mode: %s", mMode);
-        View rootView = inflater.inflate(R.layout.dialpad_fragment, container, false);
-        Fragment keypadFragment = KeypadFragment.newInstance();
-        getChildFragmentManager().beginTransaction()
-                .replace(R.id.dialpad_fragment_container, keypadFragment)
-                .commit();
+        if (savedInstanceState != null) {
+            mNumber.append(savedInstanceState.getCharSequence(DIAL_NUMBER_KEY));
+        }
+        L.d(TAG, "onCreateView mode: %s, number: %s", mMode, mNumber);
 
+        View rootView = inflater.inflate(R.layout.dialpad_fragment, container, false);
         mTitleView = rootView.findViewById(R.id.title);
+        mTitleView.setTextAppearance(
+                mMode == MODE_EMERGENCY ? R.style.EmergencyDialNumber : R.style.DialNumber);
         ImageButton callButton = rootView.findViewById(R.id.call_button);
         ImageButton deleteButton = rootView.findViewById(R.id.delete_button);
 
         if (mMode == MODE_IN_CALL) {
-            mTitleView.setText("");
             deleteButton.setVisibility(View.GONE);
             callButton.setVisibility(View.GONE);
             mActiveCall = ViewModelProviders.of(getParentFragment()).get(
                     InCallViewModel.class).getPrimaryCall().getValue();
         } else {
-            if (getArguments() != null && getArguments().containsKey(DIAL_NUMBER_KEY)) {
-                appendDialedNumber(getArguments().getString(DIAL_NUMBER_KEY));
-            } else {
-                mTitleView.setText(getContext().getString(R.string.dial_a_number));
-            }
             callButton.setVisibility(View.VISIBLE);
             deleteButton.setVisibility(View.VISIBLE);
             Context context = getContext();
@@ -181,8 +180,10 @@ public class DialpadFragment extends DialerBaseFragment implements
             callDrawable.setFabAndStrokeColor(context.getColor(R.color.phone_call));
             callButton.setBackground(callDrawable);
             callButton.setOnClickListener((unusedView) -> {
-                if (!TextUtils.isEmpty(mNumber.toString()) && mMode == MODE_DIAL) {
+                if (!TextUtils.isEmpty(mNumber.toString())) {
                     UiCallManager.get().placeCall(mNumber.toString());
+                    // Update dialed number UI later in onResume() when in call intent is handled.
+                    mNumber.setLength(0);
                 }
             });
             deleteButton.setOnClickListener(v -> removeLastDigit());
@@ -201,12 +202,27 @@ public class DialpadFragment extends DialerBaseFragment implements
         mDTMFToneEnabled = Settings.System.getInt(getContext().getContentResolver(),
                 Settings.System.DTMF_TONE_WHEN_DIALING, 1) == PLAY_DTMF_TONE;
         L.d(TAG, "DTMF tone enabled = %s", String.valueOf(mDTMFToneEnabled));
+
+        presentDialedNumber();
+    }
+
+    @Override
+    protected void setActionBarTitle() {
+        if (mMode == MODE_DIAL) {
+            super.setActionBarTitle();
+        }
     }
 
     @Override
     public void onPause() {
         super.onPause();
         mToneGenerator.stopTone();
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putCharSequence(DIAL_NUMBER_KEY, mNumber);
     }
 
     @Override
@@ -261,26 +277,37 @@ public class DialpadFragment extends DialerBaseFragment implements
 
     private void clearDialedNumber() {
         mNumber.setLength(0);
-        mTitleView.setText(getContext().getString(R.string.dial_a_number));
+        presentDialedNumber();
     }
 
     private void removeLastDigit() {
         if (mNumber.length() != 0) {
             mNumber.deleteCharAt(mNumber.length() - 1);
-            mTitleView.setText(TelecomUtils.getFormattedNumber(getContext(), mNumber.toString()));
         }
-
-        if (mNumber.length() == 0 && mMode == MODE_DIAL) {
-            mTitleView.setText(R.string.dial_a_number);
-        }
+        presentDialedNumber();
     }
 
     private void appendDialedNumber(String number) {
         mNumber.append(number);
-        if (mMode == MODE_DIAL && mNumber.length() < MAX_DIAL_NUMBER) {
-            mTitleView.setText(TelecomUtils.getFormattedNumber(getContext(), mNumber.toString()));
-        } else {
-            mTitleView.setText(mNumber.toString());
+        presentDialedNumber();
+    }
+
+    private void presentDialedNumber() {
+        if (mNumber.length() == 0 && mMode == MODE_DIAL) {
+            mTitleView.setText(R.string.dial_a_number);
+            return;
         }
+
+        if (mNumber.length() == 0 && mMode == MODE_EMERGENCY) {
+            mTitleView.setText(R.string.emergency_call_description);
+            return;
+        }
+
+        if (mNumber.length() > 0 && mNumber.length() <= MAX_DIAL_NUMBER && mMode == MODE_DIAL) {
+            mTitleView.setText(TelecomUtils.getFormattedNumber(getContext(), mNumber.toString()));
+            return;
+        }
+
+        mTitleView.setText(mNumber.toString());
     }
 }

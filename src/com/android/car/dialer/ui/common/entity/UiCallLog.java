@@ -16,7 +16,8 @@
 
 package com.android.car.dialer.ui.common.entity;
 
-import com.android.car.dialer.entity.PhoneCallLog;
+import android.net.Uri;
+import com.android.car.telephony.common.PhoneCallLog;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,14 +29,16 @@ import java.util.List;
 public class UiCallLog {
     private final String mTitle;
     private final String mNumber;
+    private final Uri mAvatarUri;
     private final List<PhoneCallLog.Record> mCallRecords;
     private String mText;
 
-    public UiCallLog(String title, String text, String number,
+    public UiCallLog(String title, String text, String number, Uri avatarUri,
             List<PhoneCallLog.Record> callRecords) {
         mTitle = title;
         mText = text;
         mNumber = number;
+        mAvatarUri = avatarUri;
         mCallRecords = new ArrayList<>(callRecords);
     }
 
@@ -65,6 +68,11 @@ public class UiCallLog {
      */
     public String getNumber() {
         return mNumber;
+    }
+
+    /** Returns the avatar of the contact associated with the number. */
+    public Uri getAvatarUri() {
+        return mAvatarUri;
     }
 
     /**

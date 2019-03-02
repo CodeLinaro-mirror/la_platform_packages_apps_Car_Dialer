@@ -19,22 +19,19 @@ package com.android.car.dialer.ui.common;
 import android.content.Context;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
-
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
-
 import com.android.car.dialer.R;
-import com.android.car.dialer.entity.Contact;
-import com.android.car.dialer.entity.PhoneCallLog;
-import com.android.car.dialer.entity.PhoneNumber;
 import com.android.car.dialer.livedata.CallHistoryLiveData;
 import com.android.car.dialer.livedata.HeartBeatLiveData;
 import com.android.car.dialer.log.L;
-import com.android.car.dialer.telecom.InMemoryPhoneBook;
-import com.android.car.dialer.telecom.TelecomUtils;
+import com.android.car.telephony.common.TelecomUtils;
 import com.android.car.dialer.ui.common.entity.UiCallLog;
-
+import com.android.car.telephony.common.Contact;
+import com.android.car.telephony.common.InMemoryPhoneBook;
+import com.android.car.telephony.common.PhoneCallLog;
+import com.android.car.telephony.common.PhoneNumber;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 
@@ -114,10 +111,9 @@ public class UiCallLogLiveData extends MediatorLiveData<List<UiCallLog>> {
             String number = phoneCallLog.getPhoneNumberString();
             String relativeTime = getRelativeTime(phoneCallLog.getLastCallEndTimestamp());
             if (TelecomUtils.isVoicemailNumber(mContext, number)) {
-                String title = appendCount(mContext.getString(R.string.voicemail),
-                        phoneCallLog.getNumberOfCallRecords());
+                String title = mContext.getString(R.string.voicemail);
                 UiCallLog uiCallLog = new UiCallLog(title,
-                        relativeTime, number, phoneCallLog.getAllCallRecords());
+                        relativeTime, number, null, phoneCallLog.getAllCallRecords());
                 uiCallLogs.add(uiCallLog);
                 continue;
             }
@@ -131,22 +127,18 @@ public class UiCallLogLiveData extends MediatorLiveData<List<UiCallLog>> {
             } else {
                 title = mContext.getString(R.string.unknown);
             }
-            title = appendCount(title, phoneCallLog.getNumberOfCallRecords());
             PhoneNumber phoneNumber = contact != null ? contact.getPhoneNumber(number) : null;
 
             UiCallLog uiCallLog = new UiCallLog(
                     title,
                     getSecondaryText(getType(phoneNumber), relativeTime),
                     number,
+                    contact != null ? contact.getAvatarUri() : null,
                     phoneCallLog.getAllCallRecords());
 
             uiCallLogs.add(uiCallLog);
         }
         return uiCallLogs;
-    }
-
-    private String appendCount(String title, int count) {
-        return count > 1 ? title + " (" + count + ")" : title;
     }
 
     private String getRelativeTime(long millis) {
