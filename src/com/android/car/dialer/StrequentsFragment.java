@@ -94,9 +94,10 @@ public class StrequentsFragment extends Fragment {
 
                 onLoadStrequentCursor(cursor);
 
-                if (mContext != null) {
-                    mListView.addItemDecoration(new Decoration(mContext));
-                }
+                // Remove calling addItemDecoration for blocking UI refresh
+                //if (mContext != null) {
+                //    mListView.addItemDecoration(new Decoration(mContext));
+                //}
             });
 
         // Get the latest call log from the call logs history.
@@ -210,11 +211,37 @@ public class StrequentsFragment extends Fragment {
         }
     }
 
+    private class TimeStampRecorder {
+        private long lastUpdated = 0L;
+        private static final long THRESHOLD_IN_MILLIS = 5000;//ms
+
+        public TimeStampRecorder () {}
+
+        private long getLastUpdated () {
+            return lastUpdated;
+        }
+
+        private void setLastUpdated(long time) {
+            lastUpdated = time;
+        }
+
+        public boolean needUpdate() {
+            long now = System.currentTimeMillis();
+            if (now - getLastUpdated() > THRESHOLD_IN_MILLIS) {
+                setLastUpdated(now);
+                return true;
+            }
+            return false;
+        }
+    }
+
     /**
      * A {@link ContentResolver} that is responsible for reloading the user's starred and frequent
      * contacts.
      */
     private class SpeedDialContentObserver extends ContentObserver {
+        private TimeStampRecorder recorder = new TimeStampRecorder();
+
         public SpeedDialContentObserver(Handler handler) {
             super(handler);
         }
@@ -229,7 +256,10 @@ public class StrequentsFragment extends Fragment {
             if (Log.isLoggable(TAG, Log.DEBUG)) {
                 Log.d(TAG, "SpeedDialContentObserver onChange() called. Reloading strequents.");
             }
-            mSpeedialCursorLoader.startLoading();
+
+            if (recorder.needUpdate()) {
+                mSpeedialCursorLoader.startLoading();
+            }
         }
     }
 
@@ -237,6 +267,8 @@ public class StrequentsFragment extends Fragment {
      * A {@link ContentResolver} that is responsible for reloading the user's recent calls.
      */
     private class CallLogContentObserver extends ContentObserver {
+        private TimeStampRecorder recorder = new TimeStampRecorder();
+
         public CallLogContentObserver(Handler handler) {
             super(handler);
         }
@@ -251,7 +283,10 @@ public class StrequentsFragment extends Fragment {
             if (Log.isLoggable(TAG, Log.DEBUG)) {
                 Log.d(TAG, "CallLogContentObserver onChange() called. Reloading call log.");
             }
-            mCallLogCursorLoader.startLoading();
+
+            if (recorder.needUpdate()) {
+                mCallLogCursorLoader.startLoading();
+            }
         }
     }
 
