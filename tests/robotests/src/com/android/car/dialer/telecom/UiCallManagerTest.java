@@ -21,6 +21,8 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.robolectric.Shadows.shadowOf;
 
@@ -30,6 +32,8 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
 import android.telecom.TelecomManager;
+
+import com.android.car.dialer.R;
 
 import org.junit.After;
 import org.junit.Before;
@@ -42,11 +46,11 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.shadow.api.Shadow;
 import org.robolectric.shadows.ShadowContextImpl;
+import org.robolectric.shadows.ShadowToast;
 
 @RunWith(RobolectricTestRunner.class)
 public class UiCallManagerTest {
 
-    private static final String PHONE_NUMBER = "6055551234";
     private static final String TEL_SCHEME = "tel";
 
     private Context mContext;
@@ -84,13 +88,50 @@ public class UiCallManagerTest {
 
     @Test
     public void testPlaceCall() {
+        String[] phoneNumbers = {
+                "6505551234", // US Number
+                "511", // Special number
+                "911", // Emergency number
+                "122", // Emergency number
+                "#77" // Emergency number
+        };
+
+        for (int i = 0; i < phoneNumbers.length; i++) {
+            checkPlaceCall(phoneNumbers[i], i + 1);
+        }
+    }
+
+    private void checkPlaceCall(String phoneNumber, int timesCalled) {
         ArgumentCaptor<Uri> uriCaptor = ArgumentCaptor.forClass(Uri.class);
 
-        mUiCallManager.placeCall(PHONE_NUMBER);
-        verify(mMockTelecomManager).placeCall(uriCaptor.capture(), (Bundle) isNull());
+        assertThat(mUiCallManager.placeCall(phoneNumber)).isTrue();
+        verify(mMockTelecomManager, times(timesCalled)).placeCall(uriCaptor.capture(),
+                (Bundle) isNull());
         assertThat(uriCaptor.getValue().getScheme()).isEqualTo(TEL_SCHEME);
-        assertThat(uriCaptor.getValue().getSchemeSpecificPart()).isEqualTo(PHONE_NUMBER);
+        assertThat(uriCaptor.getValue().getSchemeSpecificPart()).isEqualTo(phoneNumber);
         assertThat(uriCaptor.getValue().getFragment()).isNull();
+    }
+
+    @Test
+    public void testPlaceCall_invalidNumber() {
+        String[] phoneNumbers = {
+                "xxxxx",
+                "51f"
+        };
+
+        for (String phoneNumber : phoneNumbers) {
+            checkPlaceCallForInvalidNumber(phoneNumber);
+        }
+    }
+
+    private void checkPlaceCallForInvalidNumber(String phoneNumber) {
+        ArgumentCaptor<Uri> uriCaptor = ArgumentCaptor.forClass(Uri.class);
+
+        assertThat(mUiCallManager.placeCall(phoneNumber)).isFalse();
+        verify(mMockTelecomManager, never()).placeCall(uriCaptor.capture(), isNull());
+
+        assertThat(ShadowToast.getTextOfLatestToast()).isEqualTo(
+                mContext.getString(R.string.error_invalid_phone_number));
     }
 
     @After
