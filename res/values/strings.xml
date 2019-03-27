@@ -17,7 +17,7 @@
     <!-- Name of the phone dialer application [CHAR LIMIT=30]-->
     <string name="phone_app_name">Phone</string>
     <!-- Full-screen error text for when the phone can not be used because Bluetooth isn't connected [CHAR LIMIT=NONE]-->
-    <string name="no_hfp">To make or receive calls, connect your phone to your car via Bluetooth.</string>
+    <string name="no_hfp">To complete your call, first connect your phone to your car via Bluetooth.</string>
     <!-- Error text shown on the dialer facet when bluetooth is not supported -->
     <string name="bluetooth_unavailable">Bluetooth is not available.</string>
     <!-- Error text shown on the dialer facet for when bluetooth is disabled -->
@@ -36,6 +36,8 @@
     <string name="emergency_call_description">Emergency call</string>
     <!-- Message informing user that the contact has already been deleted [CHAR LIMIT=120] -->
     <string name="error_contact_deleted">This contact might have been deleted.</string>
+    <!-- Toast text when user has inputted an invalid phone number [CHAR LIMIT=NONE] -->
+    <string name="error_invalid_phone_number">Can\'t dial this number. Check it and try again.</string>
     <!-- Call status shown while a call is ongoing [CHAR LIMIT=40] -->
     <!-- Text displayed when the call log is empty. [CHAR LIMIT=40] -->
     <string name="recent_calls_empty">Your call log is empty.</string>
