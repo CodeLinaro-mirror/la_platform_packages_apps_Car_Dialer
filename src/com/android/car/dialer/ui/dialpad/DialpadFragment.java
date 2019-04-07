@@ -20,6 +20,7 @@ import android.content.Context;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.os.Bundle;
+import android.provider.CallLog;
 import android.provider.Settings;
 import android.telecom.Call;
 import android.text.TextUtils;
@@ -33,16 +34,15 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
 import androidx.lifecycle.ViewModelProviders;
 
 import com.android.car.apps.common.FabDrawable;
 import com.android.car.dialer.R;
 import com.android.car.dialer.log.L;
-import com.android.car.telephony.common.TelecomUtils;
 import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.dialer.ui.activecall.InCallViewModel;
 import com.android.car.dialer.ui.common.DialerBaseFragment;
+import com.android.car.telephony.common.TelecomUtils;
 
 /**
  * Fragment that controls the dialpad.
@@ -180,6 +180,8 @@ public class DialpadFragment extends DialerBaseFragment implements
                     UiCallManager.get().placeCall(mNumber.toString());
                     // Update dialed number UI later in onResume() when in call intent is handled.
                     mNumber.setLength(0);
+                } else {
+                    setDialedNumber(CallLog.Calls.getLastOutgoingCall(context));
                 }
             });
             deleteButton.setOnClickListener(v -> removeLastDigit());
@@ -263,12 +265,6 @@ public class DialpadFragment extends DialerBaseFragment implements
             L.d(TAG, "stop key pressed tone");
             mToneGenerator.stopTone();
         }
-    }
-
-    @StringRes
-    @Override
-    protected int getActionBarTitleRes() {
-        return R.string.dialpad_title;
     }
 
     /** Set the dialed number to the given number. Must be called after the fragment is added. */

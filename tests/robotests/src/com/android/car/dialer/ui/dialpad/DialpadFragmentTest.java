@@ -18,12 +18,6 @@ package com.android.car.dialer.ui.dialpad;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.mockito.Mockito.when;
-import static org.robolectric.Shadows.shadowOf;
-
-import android.app.Application;
-import android.content.ComponentName;
-import android.content.Context;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageButton;
@@ -32,20 +26,24 @@ import android.widget.TextView;
 import com.android.car.dialer.CarDialerRobolectricTestRunner;
 import com.android.car.dialer.FragmentTestActivity;
 import com.android.car.dialer.R;
-import com.android.car.dialer.telecom.InCallServiceImpl;
+import com.android.car.dialer.TestDialerApplication;
+import com.android.car.dialer.telecom.UiCallManager;
+import com.android.car.dialer.testutils.ShadowCallLogCalls;
 import com.android.car.dialer.ui.activecall.InCallFragment;
 
 import com.android.car.telephony.common.TelecomUtils;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.robolectric.annotation.Config;
 import org.robolectric.Robolectric;
 import org.robolectric.RuntimeEnvironment;
 
 @RunWith(CarDialerRobolectricTestRunner.class)
+@Config(shadows = {ShadowCallLogCalls.class})
 public class DialpadFragmentTest {
     private static final String DIAL_NUMBER = "6505551234";
     private static final String DIAL_NUMBER_LONG = "650555123465055512346505551234";
@@ -53,14 +51,16 @@ public class DialpadFragmentTest {
     private static final String SPEC_CHAR = "123=_=%^&";
 
     private DialpadFragment mDialpadFragment;
-    @Mock
-    private InCallServiceImpl.LocalBinder mMockBinder;
-    @Mock
-    private InCallServiceImpl mMockInCallService;
 
     @Before
     public void setup() {
         MockitoAnnotations.initMocks(this);
+        ((TestDialerApplication) RuntimeEnvironment.application).initUiCallManager();
+    }
+
+    @After
+    public void tearDown() {
+        UiCallManager.get().tearDown();
     }
 
     @Test
@@ -168,6 +168,19 @@ public class DialpadFragmentTest {
     }
 
     @Test
+    public void testCallButton_emptyString() {
+        ShadowCallLogCalls.setLastOutgoingCall(DIAL_NUMBER);
+
+        mDialpadFragment = DialpadFragment.newPlaceCallDialpad();
+        startPlaceCallActivity();
+        mDialpadFragment.setDialedNumber("");
+
+        ImageButton callButton = mDialpadFragment.getView().findViewById(R.id.call_button);
+        callButton.performClick();
+        verifyTitleText(DIAL_NUMBER);
+    }
+
+    @Test
     public void testOnKeyLongPressed_KeyCode0() {
         mDialpadFragment = DialpadFragment.newPlaceCallDialpad();
         startPlaceCallActivity();
@@ -185,16 +198,10 @@ public class DialpadFragmentTest {
     }
 
     private void startInCallActivity() {
-        Context context;
-        context = RuntimeEnvironment.application;
-
         mDialpadFragment = DialpadFragment.newInCallDialpad();
         InCallFragment inCallFragment = InCallFragment.newInstance();
         FragmentTestActivity fragmentTestActivity = Robolectric.buildActivity(
                 FragmentTestActivity.class).create().start().resume().get();
-        when(mMockBinder.getService()).thenReturn(mMockInCallService);
-        shadowOf((Application) context).setComponentNameAndServiceForBindService(
-                new ComponentName(context, InCallServiceImpl.class), mMockBinder);
         fragmentTestActivity.setFragment(inCallFragment);
         inCallFragment.getChildFragmentManager().beginTransaction().replace(R.id.dialpad_container,
                 mDialpadFragment).commit();
