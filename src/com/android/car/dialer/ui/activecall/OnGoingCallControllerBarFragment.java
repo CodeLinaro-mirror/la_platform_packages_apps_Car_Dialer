@@ -30,15 +30,17 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.car.widget.PagedListView;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProviders;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.car.apps.common.FabDrawable;
 import com.android.car.dialer.R;
 import com.android.car.dialer.log.L;
 import com.android.car.dialer.telecom.UiCallManager;
+import com.android.car.dialer.ui.view.VerticalListDividerDecoration;
 
 import java.util.List;
 
@@ -52,7 +54,7 @@ public class OnGoingCallControllerBarFragment extends Fragment {
 
     private AlertDialog mAudioRouteSelectionDialog;
     private ImageView mAudioRouteButton;
-    private Call mActiveCall;
+    private LiveData<Call> mCallLiveData;
     private int mCallState;
 
     public static OnGoingCallControllerBarFragment newInstance() {
@@ -92,18 +94,11 @@ public class OnGoingCallControllerBarFragment extends Fragment {
 
         View dialogView = LayoutInflater.from(getContext()).inflate(
                 R.layout.audio_route_switch_dialog, null, false);
-        PagedListView list = dialogView.findViewById(R.id.list);
+        RecyclerView list = dialogView.findViewById(R.id.list);
+        list.setLayoutManager(new LinearLayoutManager(getContext()));
+        list.addItemDecoration(new VerticalListDividerDecoration(getContext(), true));
+
         List<Integer> availableRoutes = UiCallManager.get().getSupportedAudioRoute();
-        list.setDividerVisibilityManager(new PagedListView.DividerVisibilityManager() {
-            public boolean getShowDivider(int position) {
-                return !(position == (availableRoutes.size() - 1));
-            }
-
-            public boolean shouldHideDivider(int position) {
-                return !getShowDivider(position);
-            }
-        });
-
         mAudioRouteSelectionDialog = new AlertDialog.Builder(getContext())
                 .setView(dialogView)
                 .create();
@@ -113,7 +108,7 @@ public class OnGoingCallControllerBarFragment extends Fragment {
 
         InCallViewModel inCallViewModel = ViewModelProviders.of(getParentFragment()).get(
                 InCallViewModel.class);
-        mActiveCall = inCallViewModel.getPrimaryCall().getValue();
+        mCallLiveData = inCallViewModel.getPrimaryCall();
     }
 
     @Nullable
@@ -223,14 +218,14 @@ public class OnGoingCallControllerBarFragment extends Fragment {
     }
 
     private void onHoldCall() {
-        if (mActiveCall != null) {
-            mActiveCall.hold();
+        if (mCallLiveData.getValue() != null) {
+            mCallLiveData.getValue().hold();
         }
     }
 
     private void onUnholdCall() {
-        if (mActiveCall != null) {
-            mActiveCall.unhold();
+        if (mCallLiveData.getValue() != null) {
+            mCallLiveData.getValue().unhold();
         }
     }
 
@@ -241,8 +236,8 @@ public class OnGoingCallControllerBarFragment extends Fragment {
     }
 
     private void onEndCall() {
-        if (mActiveCall != null) {
-            mActiveCall.disconnect();
+        if (mCallLiveData.getValue() != null) {
+            mCallLiveData.getValue().disconnect();
         }
     }
 
