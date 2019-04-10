@@ -72,7 +72,6 @@ public class InCallFragment extends Fragment implements
     @Override
     public void onPause() {
         super.onPause();
-        mHandler.removeCallbacks(mUpdateDurationRunnable);
     }
 
     @Override
@@ -134,6 +133,8 @@ public class InCallFragment extends Fragment implements
         int callState = call.getState();
         UiCall primaryCall = UiCallManager.get().getPrimaryCall();
         int callSize = UiCallManager.get().getCalls().size();
+
+        mHandler.removeCallbacks(mUpdateDurationRunnable);
 
         switch (callState) {
             case Call.STATE_NEW:
