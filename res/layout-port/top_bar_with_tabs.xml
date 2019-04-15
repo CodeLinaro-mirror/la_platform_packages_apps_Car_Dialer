@@ -15,7 +15,17 @@
   limitations under the License.
   -->
 
-<resources>
-    <!-- Card view margins-->
-    <dimen name="dialer_card_margin_x">132dp</dimen>
-</resources>
+<merge
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <com.android.car.apps.common.ClickThroughToolbar
+        android:id="@+id/car_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?android:attr/actionBarSize"
+        app:clickThrough="true"/>
+
+    <com.android.car.apps.common.widget.CarTabLayout
+        android:id="@+id/tab_layout"
+        android:layout_width="match_parent"
+        android:layout_height="?android:attr/actionBarSize"/>
+</merge>
