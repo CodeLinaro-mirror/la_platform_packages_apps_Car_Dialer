@@ -15,17 +15,19 @@
   limitations under the License.
   -->
 
-<merge
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/app_bar_background_color"
+    android:orientation="vertical">
     <com.android.car.apps.common.ClickThroughToolbar
         android:id="@+id/car_toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?android:attr/actionBarSize"
-        app:clickThrough="true"/>
+        android:layout_height="?android:attr/actionBarSize"/>
 
     <com.android.car.apps.common.widget.CarTabLayout
         android:id="@+id/tab_layout"
         android:layout_width="match_parent"
         android:layout_height="?android:attr/actionBarSize"/>
-</merge>
+</LinearLayout>
