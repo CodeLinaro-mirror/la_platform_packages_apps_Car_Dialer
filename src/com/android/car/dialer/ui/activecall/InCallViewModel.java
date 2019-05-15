@@ -28,13 +28,13 @@ import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 
+import com.android.car.dialer.livedata.CallDetailLiveData;
+import com.android.car.dialer.livedata.CallStateLiveData;
+import com.android.car.dialer.livedata.HeartBeatLiveData;
 import com.android.car.dialer.log.L;
 import com.android.car.dialer.telecom.InCallServiceImpl;
 import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.telephony.common.CallDetail;
-import com.android.car.dialer.livedata.CallDetailLiveData;
-import com.android.car.dialer.livedata.CallStateLiveData;
-import com.android.car.dialer.livedata.HeartBeatLiveData;
 import com.android.car.telephony.common.TelecomUtils;
 
 import com.google.common.collect.Lists;
@@ -200,8 +200,14 @@ public class InCallViewModel extends AndroidViewModel implements
             CallDetail callDetail = mCallDetailLiveData.getValue();
             Integer callState = mCallStateLiveData.getValue();
             if (callDetail != null && callState != null) {
-                String newDescription = TelecomUtils.getCallInfoText(mContext,
-                        callDetail, callState, callDetail.getNumber());
+                String newDescription;
+                if (callState == Call.STATE_ACTIVE) {
+                    long duration = callDetail.getConnectTimeMillis() > 0 ? System.currentTimeMillis()
+                            - callDetail.getConnectTimeMillis() : 0;
+                    newDescription = DateUtils.formatElapsedTime(duration / 1000);
+                } else {
+                    newDescription = TelecomUtils.callStateToUiString(mContext, callState);
+                }
                 String oldDescription = getValue();
                 if (!newDescription.equals(oldDescription)) {
                     setValue(newDescription);
