@@ -46,6 +46,7 @@ import com.android.car.dialer.ui.contact.ContactListFragment;
 import com.android.car.dialer.ui.dialpad.DialpadFragment;
 import com.android.car.dialer.ui.favorite.FavoriteFragment;
 import com.android.car.dialer.ui.search.ContactResultsFragment;
+import com.android.car.dialer.ui.settings.DialerSettingsActivity;
 import com.android.car.dialer.ui.warning.NoHfpFragment;
 
 /**
@@ -69,6 +70,7 @@ public class TelecomActivity extends FragmentActivity implements
     // View objects for this activity.
     private CarTabLayout<TelecomPageTab> mTabLayout;
     private Toolbar mToolbar;
+    private TelecomPageTab.Factory mTabFactory;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -234,9 +236,9 @@ public class TelecomActivity extends FragmentActivity implements
 
         boolean hasContentFragment = false;
 
-        TelecomPageTab.Factory factory = new TelecomPageTab.Factory(getSupportFragmentManager());
-        for (int i = 0; i < factory.getTabCount(); i++) {
-            TelecomPageTab telecomPageTab = factory.createTab(getBaseContext(), i);
+        mTabFactory = new TelecomPageTab.Factory(this, getSupportFragmentManager());
+        for (int i = 0; i < mTabFactory.getTabCount(); i++) {
+            TelecomPageTab telecomPageTab = mTabFactory.createTab(getBaseContext(), i);
             mTabLayout.addCarTab(telecomPageTab);
 
             if (telecomPageTab.wasFragmentRestored()) {
@@ -247,7 +249,7 @@ public class TelecomActivity extends FragmentActivity implements
 
         // First tab will be selected by default. Setup the fragment for it.
         if (!hasContentFragment) {
-            TelecomPageTab firstTab = mTabLayout.get(TelecomPageTab.PAGE.FAVORITES);
+            TelecomPageTab firstTab = mTabLayout.get(0);
             setContentFragment(firstTab.getFragment(), firstTab.getFragmentTag());
         }
 
@@ -263,7 +265,13 @@ public class TelecomActivity extends FragmentActivity implements
 
     /** Switch to {@link DialpadFragment} and set the given number as dialed number. */
     private void showDialPadFragment(String number) {
-        TelecomPageTab dialpadTab = mTabLayout.get(TelecomPageTab.PAGE.DIAL_PAD);
+        int dialpadTabIndex  = mTabFactory.getTabIndex(TelecomPageTab.Page.DIAL_PAD);
+        if (dialpadTabIndex == -1) {
+            L.w(TAG, "Dialpad is not a tab.");
+            return;
+        }
+
+        TelecomPageTab dialpadTab = mTabLayout.get(dialpadTabIndex);
         Fragment fragment = dialpadTab.getFragment();
         if (fragment instanceof DialpadFragment) {
             ((DialpadFragment) fragment).setDialedNumber(number);
@@ -271,7 +279,7 @@ public class TelecomActivity extends FragmentActivity implements
             L.w(TAG, "Current tab is not a dialpad fragment!");
         }
 
-        mTabLayout.selectCarTab(TelecomPageTab.PAGE.DIAL_PAD);
+        mTabLayout.selectCarTab(dialpadTabIndex);
     }
 
     private void setContentFragment(Fragment fragment, String fragmentTag) {
@@ -316,6 +324,7 @@ public class TelecomActivity extends FragmentActivity implements
         return super.onNavigateUp();
     }
 
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.main_menu, menu);
@@ -326,6 +335,11 @@ public class TelecomActivity extends FragmentActivity implements
     public boolean onOptionsItemSelected(MenuItem menuItem) {
         if (menuItem.getItemId() == R.id.menu_contacts_search) {
             navigateToContactResultsFragment(null);
+            return true;
+        }
+
+        if (menuItem.getItemId() == R.id.menu_dialer_setting) {
+            startDialerSettingsActivity();
             return true;
         }
 
@@ -359,5 +373,11 @@ public class TelecomActivity extends FragmentActivity implements
     /** If the back button on action bar is available to navigate up. */
     private boolean isBackNavigationAvailable() {
         return getSupportFragmentManager().getBackStackEntryCount() > 1;
+    }
+
+    private void startDialerSettingsActivity() {
+        L.d(TAG, "Start DialerSettingsActivity");
+        Intent launchIntent = new Intent(getApplicationContext(), DialerSettingsActivity.class);
+        startActivity(launchIntent);
     }
 }

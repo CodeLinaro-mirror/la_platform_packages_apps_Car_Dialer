@@ -24,20 +24,20 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.car.dialer.R;
-import com.android.car.dialer.log.L;
-import com.android.car.telephony.common.Contact;
-import com.android.car.telephony.common.InMemoryPhoneBook;
-import com.android.car.telephony.common.TelecomUtils;
 import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.dialer.ui.common.entity.UiCallLog;
 import com.android.car.dialer.widget.CallTypeIconsView;
+import com.android.car.telephony.common.Contact;
+import com.android.car.telephony.common.InMemoryPhoneBook;
 import com.android.car.telephony.common.PhoneCallLog;
+import com.android.car.telephony.common.TelecomUtils;
 
 /**
  * {@link RecyclerView.ViewHolder} for call history list item, responsible for presenting and
  * resetting the UI on recycle.
  */
 public class CallLogViewHolder extends RecyclerView.ViewHolder {
+
     private CallLogAdapter.OnShowContactDetailListener mOnShowContactDetailListener;
     private ImageView mAvatarView;
     private TextView mTitleView;
@@ -65,10 +65,11 @@ public class CallLogViewHolder extends RecyclerView.ViewHolder {
                 uiCallLog.getAvatarUri(),
                 uiCallLog.getTitle());
         mTitleView.setText(uiCallLog.getTitle());
-        mTextView.setText(uiCallLog.getText());
         for (PhoneCallLog.Record record : uiCallLog.getCallRecords()) {
             mCallTypeIconsView.add(record.getCallType());
         }
+        mTextView.setText(mCallTypeIconsView.getCallCountText());
+        mTextView.append(uiCallLog.getText());
 
         super.itemView.setOnClickListener(
                 view -> UiCallManager.get().placeCall(uiCallLog.getNumber()));
