@@ -18,24 +18,18 @@ package com.android.car.dialer.ui.contact;
 
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 
 import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
-import androidx.car.widget.PagedListView;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.car.dialer.R;
-import com.android.car.dialer.ui.common.DialerBaseFragment;
-import com.android.car.dialer.ui.view.VerticalListDividerDecoration;
+import com.android.car.dialer.ui.common.DialerListBaseFragment;
 import com.android.car.telephony.common.Contact;
 
 import java.util.ArrayList;
@@ -46,8 +40,9 @@ import java.util.List;
  * primarily used to respond to the results of search queries but supplyig it with the content://
  * uri of a contact should work too.
  */
-public class ContactDetailsFragment extends DialerBaseFragment {
+public class ContactDetailsFragment extends DialerListBaseFragment {
     private static final String TAG = "CD.ContactDetailsFragment";
+    public static final String FRAGMENT_TAG = "CONTACT_DETAIL_FRAGMENT_TAG";
 
     // Key to load and save the contact entity instance.
     private static final String KEY_CONTACT_ENTITY = "ContactEntity";
@@ -55,7 +50,6 @@ public class ContactDetailsFragment extends DialerBaseFragment {
     // Key to load the contact details by passing in the content provider query uri.
     private static final String KEY_CONTACT_QUERY_URI = "ContactQueryUri";
 
-    private PagedListView mListView;
     private final List<RecyclerView.OnScrollListener> mOnScrollListeners = new ArrayList<>();
 
     private Contact mContact;
@@ -89,7 +83,7 @@ public class ContactDetailsFragment extends DialerBaseFragment {
 
         mContact = getArguments().getParcelable(KEY_CONTACT_ENTITY);
         mContactLookupUri = getArguments().getParcelable(KEY_CONTACT_QUERY_URI);
-        if (mContact == null) {
+        if (mContact == null && savedInstanceState != null) {
             mContact = savedInstanceState.getParcelable(KEY_CONTACT_ENTITY);
         }
         if (mContact != null) {
@@ -97,8 +91,7 @@ public class ContactDetailsFragment extends DialerBaseFragment {
         }
         ContactDetailsViewModel contactDetailsViewModel = ViewModelProviders.of(this).get(
                 ContactDetailsViewModel.class);
-        mContactDetailsLiveData = contactDetailsViewModel.getContactDetailsLiveData(
-                mContactLookupUri);
+        mContactDetailsLiveData = contactDetailsViewModel.getContactDetails(mContactLookupUri);
         mContactDetailsLiveData.observe(this, contact -> getArguments().clear());
     }
 
@@ -113,30 +106,15 @@ public class ContactDetailsFragment extends DialerBaseFragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-            Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.contact_details_fragment, container, false);
-    }
-
-    @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
-        mListView = view.findViewById(R.id.list_view);
-
-        RecyclerView recyclerView = mListView.getRecyclerView();
-        PagedListView.LayoutParams layoutParams =
-                (PagedListView.LayoutParams) recyclerView.getLayoutParams();
-        layoutParams.gravity = Gravity.CENTER_HORIZONTAL;
-        layoutParams.width = PagedListView.LayoutParams.WRAP_CONTENT;
-        recyclerView.addItemDecoration(new VerticalListDividerDecoration(getContext(), true));
-
         for (RecyclerView.OnScrollListener listener : mOnScrollListeners) {
-            recyclerView.addOnScrollListener(listener);
+            getRecyclerView().addOnScrollListener(listener);
         }
         mOnScrollListeners.clear();
 
         ContactDetailsAdapter contactDetailsAdapter = new ContactDetailsAdapter(getContext(),
                 mContact);
-        mListView.setAdapter(contactDetailsAdapter);
+        getRecyclerView().setAdapter(contactDetailsAdapter);
         mContactDetailsLiveData.observe(this, contactDetailsAdapter::setContact);
     }
 
@@ -151,12 +129,12 @@ public class ContactDetailsFragment extends DialerBaseFragment {
             return;
         }
         // If the view has not been created yet, then queue the setting of the scroll listener.
-        if (mListView == null) {
+        if (getRecyclerView() == null) {
             mOnScrollListeners.add(onScrollListener);
             return;
         }
 
-        mListView.getRecyclerView().addOnScrollListener(onScrollListener);
+        getRecyclerView().addOnScrollListener(onScrollListener);
     }
 
     @Override
@@ -168,13 +146,12 @@ public class ContactDetailsFragment extends DialerBaseFragment {
     @Override
     public void onDestroyView() {
         // Clear all scroll listeners.
-        mListView.getRecyclerView().removeOnScrollListener(null);
+        getRecyclerView().removeOnScrollListener(null);
         super.onDestroyView();
     }
 
-    @StringRes
     @Override
-    protected int getActionBarTitleRes() {
-        return R.string.contacts_title;
+    protected CharSequence getActionBarTitle() {
+        return getString(R.string.toolbar_title_contact_details);
     }
 }

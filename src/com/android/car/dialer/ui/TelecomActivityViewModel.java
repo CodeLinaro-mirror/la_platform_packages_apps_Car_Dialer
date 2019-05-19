@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2019 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.android.car.dialer.ui;
 
 import android.annotation.IntDef;
@@ -39,12 +55,12 @@ public class TelecomActivityViewModel extends AndroidViewModel {
      * App state indicates if bluetooth is connected or it should just show the content fragments.
      */
     @IntDef({DialerAppState.DEFAULT, DialerAppState.BLUETOOTH_ERROR,
-            DialerAppState.EMERGENCY_DAILPAD})
+            DialerAppState.EMERGENCY_DIALPAD})
     @Retention(RetentionPolicy.SOURCE)
     public @interface DialerAppState {
         int DEFAULT = 0;
         int BLUETOOTH_ERROR = 1;
-        int EMERGENCY_DAILPAD = 2;
+        int EMERGENCY_DIALPAD = 2;
     }
 
     public TelecomActivityViewModel(Application application) {
@@ -91,14 +107,14 @@ public class TelecomActivityViewModel extends AndroidViewModel {
         }
 
         private void updateDialerAppState() {
-            L.d(TAG, "updateDialerAppState, error: ", mErrorStringLiveData.getValue());
+            L.d(TAG, "updateDialerAppState, error: %s", mErrorStringLiveData.getValue());
 
             // If bluetooth is not connected, user can make an emergency call. So show the in
             // call fragment no matter if bluetooth is connected or not.
             // Bluetooth error
             if (!NO_BT_ERROR.equals(mErrorStringLiveData.getValue())) {
                 // Currently bluetooth is not connected, stay on the emergency dial pad page.
-                if (getValue() == DialerAppState.EMERGENCY_DAILPAD) {
+                if (getValue() == DialerAppState.EMERGENCY_DIALPAD) {
                     return;
                 }
                 setValue(DialerAppState.BLUETOOTH_ERROR);
