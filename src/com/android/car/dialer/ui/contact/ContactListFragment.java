@@ -16,31 +16,22 @@
 
 package com.android.car.dialer.ui.contact;
 
-import static androidx.car.widget.PagedListView.UNLIMITED_PAGES;
-
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
-import androidx.car.widget.PagedListView;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProviders;
 
-import com.android.car.dialer.R;
-import com.android.car.dialer.ui.common.DialerBaseFragment;
-import com.android.car.dialer.ui.view.VerticalListDividerDecoration;
+import com.android.car.dialer.ui.common.DialerListBaseFragment;
 import com.android.car.telephony.common.Contact;
 
 /**
  * Contact Fragment.
  */
-public class ContactListFragment extends DialerBaseFragment implements
+public class ContactListFragment extends DialerListBaseFragment implements
         ContactListAdapter.OnShowContactDetailListener {
-    private static final String CONTACT_DETAIL_FRAGMENT_TAG = "CONTACT_DETAIL_FRAGMENT_TAG";
     private ContactListAdapter mContactListAdapter;
 
     public static ContactListFragment newInstance() {
@@ -48,34 +39,19 @@ public class ContactListFragment extends DialerBaseFragment implements
     }
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
-            @Nullable Bundle savedInstanceState) {
-        View fragmentView = inflater.inflate(R.layout.contact_list_fragment, container, false);
-
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         mContactListAdapter = new ContactListAdapter(
                 getContext(), /* onShowContactDetailListener= */this);
-        PagedListView pagedListView = fragmentView.findViewById(R.id.list_view);
-        pagedListView.setAdapter(mContactListAdapter);
-        pagedListView.getRecyclerView().addItemDecoration(
-                new VerticalListDividerDecoration(getContext(), /* hideLastDivider= */true));
-        pagedListView.setMaxPages(UNLIMITED_PAGES);
+        getRecyclerView().setAdapter(mContactListAdapter);
 
         ContactListViewModel contactListViewModel = ViewModelProviders.of(this).get(
                 ContactListViewModel.class);
         contactListViewModel.getAllContacts().observe(this, mContactListAdapter::setContactList);
-        return fragmentView;
     }
 
     @Override
     public void onShowContactDetail(Contact contact) {
         Fragment contactDetailsFragment = ContactDetailsFragment.newInstance(contact, null);
-        pushContentFragment(contactDetailsFragment, CONTACT_DETAIL_FRAGMENT_TAG);
-    }
-
-
-    @StringRes
-    @Override
-    protected int getActionBarTitleRes() {
-        return R.string.contacts_title;
+        pushContentFragment(contactDetailsFragment, ContactDetailsFragment.FRAGMENT_TAG);
     }
 }

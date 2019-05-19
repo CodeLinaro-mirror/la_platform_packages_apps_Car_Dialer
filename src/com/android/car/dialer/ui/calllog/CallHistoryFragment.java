@@ -15,52 +15,42 @@
  */
 package com.android.car.dialer.ui.calllog;
 
-import static androidx.car.widget.PagedListView.UNLIMITED_PAGES;
-
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
-import androidx.car.widget.PagedListView;
+import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProviders;
 
-import com.android.car.dialer.R;
-import com.android.car.dialer.ui.view.VerticalListDividerDecoration;
-import com.android.car.dialer.ui.common.DialerBaseFragment;
+import com.android.car.dialer.ui.common.DialerListBaseFragment;
+import com.android.car.dialer.ui.contact.ContactDetailsFragment;
+import com.android.car.telephony.common.Contact;
 
-public class CallHistoryFragment extends DialerBaseFragment {
+/** Fragment for call history page. */
+public class CallHistoryFragment extends DialerListBaseFragment implements
+        CallLogAdapter.OnShowContactDetailListener {
+    private static final String CONTACT_DETAIL_FRAGMENT_TAG = "CONTACT_DETAIL_FRAGMENT_TAG";
+
     public static CallHistoryFragment newInstance() {
         return new CallHistoryFragment();
     }
 
-    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
-            @Nullable Bundle savedInstanceState) {
-        View fragmentView = inflater.inflate(R.layout.call_list_fragment, container, false);
-        PagedListView pagedListView = fragmentView.findViewById(R.id.list_view);
-
-        CallLogAdapter callLogAdapter = new CallLogAdapter(getContext());
-        pagedListView.setAdapter(callLogAdapter);
-        pagedListView.getRecyclerView().addItemDecoration(
-                new VerticalListDividerDecoration(getContext(), true));
-        pagedListView.setMaxPages(UNLIMITED_PAGES);
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        CallLogAdapter callLogAdapter = new CallLogAdapter(
+                getContext(), /* onShowContactDetailListener= */this);
+        getRecyclerView().setAdapter(callLogAdapter);
 
         CallHistoryViewModel viewModel = ViewModelProviders.of(this).get(
                 CallHistoryViewModel.class);
 
         viewModel.getCallHistory().observe(this, callLogAdapter::setUiCallLogs);
-
-        return fragmentView;
     }
 
-    @StringRes
     @Override
-    protected int getActionBarTitleRes() {
-        return R.string.call_history_title;
+    public void onShowContactDetail(Contact contact) {
+        Fragment contactDetailsFragment = ContactDetailsFragment.newInstance(contact, null);
+        pushContentFragment(contactDetailsFragment, CONTACT_DETAIL_FRAGMENT_TAG);
     }
 }

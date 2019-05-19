@@ -16,20 +16,19 @@
 
 package com.android.car.dialer.ui.common;
 
+import android.app.ActionBar;
 import android.app.Activity;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.view.View;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.StringRes;
 import androidx.fragment.app.Fragment;
 
+import com.android.car.apps.common.util.Themes;
 import com.android.car.dialer.R;
-import com.android.car.theme.Themes;
 
-/**
- * The base class for top level Dialer Fragments.
- */
+/** The base class for top level dialer content {@link Fragment}s. */
 public abstract class DialerBaseFragment extends Fragment {
 
     /**
@@ -39,12 +38,6 @@ public abstract class DialerBaseFragment extends Fragment {
 
         /** Sets the background drawable. */
         void setBackground(Drawable background);
-
-        /** Sets the visibility of action bar. */
-        void setActionBarVisibility(boolean isVisible);
-
-        /** Sets the title of the action bar. */
-        void setActionBarTitle(@StringRes int titleRes);
 
         /** Push a fragment to the back stack. Update action bar accordingly. */
         void pushContentFragment(Fragment fragment, String fragmentTag);
@@ -70,8 +63,9 @@ public abstract class DialerBaseFragment extends Fragment {
     /** Sets the title of the action bar. */
     protected void setActionBarTitle() {
         Activity parentActivity = getActivity();
-        if (parentActivity instanceof DialerFragmentParent) {
-            ((DialerFragmentParent) parentActivity).setActionBarTitle(getActionBarTitleRes());
+        ActionBar actionBar = parentActivity.getActionBar();
+        if (actionBar != null) {
+            actionBar.setTitle(getActionBarTitle());
         }
     }
 
@@ -80,7 +74,7 @@ public abstract class DialerBaseFragment extends Fragment {
      * change the background.
      */
     protected Drawable getFullScreenBackgroundColor() {
-        return new ColorDrawable(Themes.getAttrColor(getContext(), R.attr.background));
+        return new ColorDrawable(Themes.getAttrColor(getContext(), android.R.attr.background));
     }
 
     /** Push a fragment to the back stack. Update action bar accordingly. */
@@ -91,9 +85,22 @@ public abstract class DialerBaseFragment extends Fragment {
         }
     }
 
-    /**
-     * Return the string resources id for the action bar title.
-     */
-    @StringRes
-    protected abstract int getActionBarTitleRes();
+    /** Return the action bar title. */
+    protected CharSequence getActionBarTitle() {
+        return getString(R.string.default_toolbar_title);
+    }
+
+    protected int getTopBarHeight() {
+        View toolbar = getActivity().findViewById(R.id.car_toolbar);
+
+        int backStackEntryCount =
+                getActivity().getSupportFragmentManager().getBackStackEntryCount();
+        int topBarHeight = Themes.getAttrDimensionPixelSize(getContext(),
+                android.R.attr.actionBarSize);
+        // Tabs are not child of the toolbar and tabs are visible.
+        if (toolbar.findViewById(R.id.tab_layout) == null && backStackEntryCount == 1) {
+            topBarHeight += topBarHeight;
+        }
+        return topBarHeight;
+    }
 }

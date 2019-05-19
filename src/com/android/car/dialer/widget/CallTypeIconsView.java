@@ -20,7 +20,7 @@ import android.graphics.Canvas;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
-import android.widget.TextView;
+import android.view.View;
 
 import com.android.car.dialer.R;
 import com.android.car.dialer.livedata.CallHistoryLiveData;
@@ -33,34 +33,37 @@ import java.util.List;
  * The symbols are set up horizontally. As this view doesn't create subviews, it is better suited
  * for ListView-recycling that a regular LinearLayout using ImageViews.
  */
-public class CallTypeIconsView extends TextView {
+public class CallTypeIconsView extends View {
     // Limit the icons up to 3 and if there are more than 3 calls, append the call count at the end.
     private static final int MAX_CALL_TYPE_ICONS = 3;
     private static final String CALL_COUNT_FORMAT = "(%d)";
 
-    private List<Integer> mCallTypes = new ArrayList<>();
-    private IconResources mIconResources;
+    private final List<Integer> mCallTypes = new ArrayList<>();
+    private final IconResources mIconResources;
+    private final int mSingleIconSize;
     private int mIconWidth;
     private int mIconHeight;
+    private String mCallCountText;
 
     public CallTypeIconsView(Context context) {
-        this(context, null, -1, -1);
+        this(context, null);
     }
 
     public CallTypeIconsView(Context context, AttributeSet attrs) {
-        this(context, attrs, -1, -1);
+        this(context, attrs, 0);
     }
 
     public CallTypeIconsView(Context context, AttributeSet attrs, int defStyleAttr) {
-        this(context, attrs, defStyleAttr, -1);
+        this(context, attrs, defStyleAttr, 0);
     }
 
     public CallTypeIconsView(Context context, AttributeSet attrs, int defStyleAttr,
             int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         mIconResources = new IconResources(context);
-        mIconResources.voicemail.setColorFilter(context.getColor(R.color.dialer_tint),
+        mIconResources.voicemail.setColorFilter(context.getColor(R.color.primary_icon_color),
                 PorterDuff.Mode.SRC_IN);
+        mSingleIconSize = getResources().getDimensionPixelSize(R.dimen.inline_icon_size);
     }
 
     public void clear() {
@@ -83,15 +86,13 @@ public class CallTypeIconsView extends TextView {
         }
 
         setText(null);
-        final Drawable drawable = getCallTypeDrawable(callType);
-        mIconWidth += drawable.getIntrinsicWidth() + mIconResources.iconMargin;
-        mIconHeight = Math.max(mIconHeight,
-                drawable.getIntrinsicHeight() + mIconResources.iconMargin);
+        mIconWidth += mSingleIconSize + mIconResources.iconMargin;
+        mIconHeight = Math.max(mIconHeight, mSingleIconSize + mIconResources.iconMargin);
         requestLayout();
     }
 
-    public int getCount() {
-        return mCallTypes.size();
+    public String getCallCountText() {
+        return mCallCountText;
     }
 
     public int getCallType(int index) {
@@ -119,8 +120,7 @@ public class CallTypeIconsView extends TextView {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        int mWidth = getMeasuredWidth() + mIconWidth;
+        int mWidth = mIconWidth;
         int mHeight = Math.max(getMeasuredHeight(), mIconHeight);
         // Add extra end margin if show the count text.
         if (mCallTypes.size() > MAX_CALL_TYPE_ICONS) {
@@ -136,18 +136,16 @@ public class CallTypeIconsView extends TextView {
         int iconCount = Math.min(MAX_CALL_TYPE_ICONS, mCallTypes.size());
         for (int i = 0; i < iconCount; i++) {
             final Drawable drawable = getCallTypeDrawable(mCallTypes.get(i));
-            final int right = left + drawable.getIntrinsicWidth();
+            final int right = left + mSingleIconSize;
             drawable.setBounds(left, mIconResources.iconMargin, right,
-                    drawable.getIntrinsicHeight() + mIconResources.iconMargin);
+                    mSingleIconSize + mIconResources.iconMargin);
             drawable.draw(canvas);
             left = right + mIconResources.iconMargin;
         }
+    }
 
-        // Draw the count text.
-        canvas.save();
-        canvas.translate(left, 0);
-        super.onDraw(canvas);
-        canvas.restore();
+    private void setText(String text) {
+        mCallCountText = text;
     }
 
     private static class IconResources {
