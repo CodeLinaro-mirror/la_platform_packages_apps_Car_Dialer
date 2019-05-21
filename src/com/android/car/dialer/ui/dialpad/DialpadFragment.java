@@ -26,6 +26,7 @@ import android.telecom.Call;
 import android.text.TextUtils;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -36,13 +37,16 @@ import android.widget.TextView;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.ViewModelProviders;
 
-import com.android.car.apps.common.FabDrawable;
 import com.android.car.dialer.R;
 import com.android.car.dialer.log.L;
 import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.dialer.ui.activecall.InCallViewModel;
 import com.android.car.dialer.ui.common.DialerBaseFragment;
+import com.android.car.telephony.common.Contact;
+import com.android.car.telephony.common.InMemoryPhoneBook;
 import com.android.car.telephony.common.TelecomUtils;
+
+import com.google.common.annotations.VisibleForTesting;
 
 /**
  * Fragment that controls the dialpad.
@@ -52,7 +56,8 @@ public class DialpadFragment extends DialerBaseFragment implements
     private static final String TAG = "CD.DialpadFragment";
     private static final String DIAL_NUMBER_KEY = "DIAL_NUMBER_KEY";
     private static final String DIALPAD_MODE_KEY = "DIALPAD_MODE_KEY";
-    private static final int MAX_DIAL_NUMBER = 20;
+    @VisibleForTesting
+    static final int MAX_DIAL_NUMBER = 20;
 
     private static final SparseIntArray sToneMap = new SparseIntArray();
     private static final SparseArray<Character> sDialValueMap = new SparseArray<>();
@@ -100,6 +105,8 @@ public class DialpadFragment extends DialerBaseFragment implements
     private static final int MODE_EMERGENCY = 3;
 
     private TextView mTitleView;
+    private TextView mDisplayName;
+    private ImageButton mDeleteButton;
     private int mMode;
     private StringBuffer mNumber = new StringBuffer(MAX_DIAL_NUMBER);
     private ToneGenerator mToneGenerator;
@@ -111,8 +118,6 @@ public class DialpadFragment extends DialerBaseFragment implements
 
     /**
      * Creates a new instance of the {@link DialpadFragment} which is used for dialing a number.
-     *
-     * @param dialNumber The given number as the one to dial.
      */
     public static DialpadFragment newPlaceCallDialpad() {
         DialpadFragment fragment = newDialpad(MODE_DIAL);
@@ -157,24 +162,26 @@ public class DialpadFragment extends DialerBaseFragment implements
         L.d(TAG, "onCreateView mode: %s, number: %s", mMode, mNumber);
 
         View rootView = inflater.inflate(R.layout.dialpad_fragment, container, false);
+        // Offset the dialpad to under the tabs in dial mode.
+        rootView.setPadding(0, getTopOffset(), 0, 0);
+
         mTitleView = rootView.findViewById(R.id.title);
         mTitleView.setTextAppearance(
                 mMode == MODE_EMERGENCY ? R.style.EmergencyDialNumber : R.style.DialNumber);
+        mTitleView.setGravity(Gravity.CENTER);
+        mDisplayName = rootView.findViewById(R.id.display_name);
         ImageButton callButton = rootView.findViewById(R.id.call_button);
-        ImageButton deleteButton = rootView.findViewById(R.id.delete_button);
+        mDeleteButton = rootView.findViewById(R.id.delete_button);
 
         if (mMode == MODE_IN_CALL) {
-            deleteButton.setVisibility(View.GONE);
+            mDeleteButton.setVisibility(View.GONE);
             callButton.setVisibility(View.GONE);
-            mActiveCall = ViewModelProviders.of(getParentFragment()).get(
+            mActiveCall = ViewModelProviders.of(getActivity()).get(
                     InCallViewModel.class).getPrimaryCall().getValue();
         } else {
             callButton.setVisibility(View.VISIBLE);
-            deleteButton.setVisibility(View.VISIBLE);
+            mDeleteButton.setVisibility(View.GONE);
             Context context = getContext();
-            FabDrawable callDrawable = new FabDrawable(context);
-            callDrawable.setFabAndStrokeColor(context.getColor(R.color.phone_call));
-            callButton.setBackground(callDrawable);
             callButton.setOnClickListener((unusedView) -> {
                 if (!TextUtils.isEmpty(mNumber.toString())) {
                     UiCallManager.get().placeCall(mNumber.toString());
@@ -184,8 +191,8 @@ public class DialpadFragment extends DialerBaseFragment implements
                     setDialedNumber(CallLog.Calls.getLastOutgoingCall(context));
                 }
             });
-            deleteButton.setOnClickListener(v -> removeLastDigit());
-            deleteButton.setOnLongClickListener(v -> {
+            mDeleteButton.setOnClickListener(v -> removeLastDigit());
+            mDeleteButton.setOnLongClickListener(v -> {
                 clearDialedNumber();
                 return true;
             });
@@ -294,21 +301,68 @@ public class DialpadFragment extends DialerBaseFragment implements
     }
 
     private void presentDialedNumber() {
-        if (mNumber.length() == 0 && mMode == MODE_DIAL) {
-            mTitleView.setText(R.string.dial_a_number);
+        if (getActivity() == null) {
             return;
         }
 
-        if (mNumber.length() == 0 && mMode == MODE_EMERGENCY) {
-            mTitleView.setText(R.string.emergency_call_description);
+        if (mMode != MODE_IN_CALL) {
+            presentContactName();
+        }
+
+        if (mNumber.length() == 0) {
+            mTitleView.setGravity(Gravity.CENTER);
+            mDeleteButton.setVisibility(View.GONE);
+
+            if (mMode == MODE_DIAL) {
+                mTitleView.setText(R.string.dial_a_number);
+            } else if (mMode == MODE_EMERGENCY) {
+                mTitleView.setText(R.string.emergency_call_description);
+            } else {
+                mTitleView.setText("");
+            }
+        } else if (mNumber.length() > 0 && mNumber.length() <= MAX_DIAL_NUMBER) {
+            mTitleView.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+
+            if (mMode == MODE_IN_CALL) {
+                mTitleView.setText(mNumber);
+                mDeleteButton.setVisibility(View.GONE);
+            } else {
+                mTitleView.setText(
+                        TelecomUtils.getFormattedNumber(getContext(), mNumber.toString()));
+                mDeleteButton.setVisibility(View.VISIBLE);
+            }
+        } else {
+            mTitleView.setText(mNumber.substring(mNumber.length() - MAX_DIAL_NUMBER));
+            mTitleView.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+
+            if (mMode == MODE_IN_CALL) {
+                mDeleteButton.setVisibility(View.GONE);
+            } else {
+                mDeleteButton.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
+    private void presentContactName() {
+        if (mDisplayName == null) {
+            // OEM may remove this view from resource file.
             return;
         }
 
-        if (mNumber.length() > 0 && mNumber.length() <= MAX_DIAL_NUMBER && mMode == MODE_DIAL) {
-            mTitleView.setText(TelecomUtils.getFormattedNumber(getContext(), mNumber.toString()));
+        Contact contact = InMemoryPhoneBook.get().lookupContactEntry(mNumber.toString());
+        if (contact == null) {
+            mDisplayName.setText("");
+            mDisplayName.setVisibility(View.GONE);
             return;
         }
+        mDisplayName.setVisibility(View.VISIBLE);
+        mDisplayName.setText(contact.getDisplayName());
+    }
 
-        mTitleView.setText(mNumber.toString());
+    private int getTopOffset() {
+        if (mMode == MODE_DIAL) {
+            return getTopBarHeight();
+        }
+        return 0;
     }
 }

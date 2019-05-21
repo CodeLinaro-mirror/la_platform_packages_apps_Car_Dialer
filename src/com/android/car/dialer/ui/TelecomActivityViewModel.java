@@ -27,10 +27,8 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Transformations;
 
 import com.android.car.dialer.R;
-import com.android.car.dialer.livedata.ActiveCallListLiveData;
 import com.android.car.dialer.livedata.BluetoothHfpStateLiveData;
 import com.android.car.dialer.livedata.BluetoothPairListLiveData;
 import com.android.car.dialer.livedata.BluetoothStateLiveData;
@@ -52,7 +50,6 @@ public class TelecomActivityViewModel extends AndroidViewModel {
     private final Context mApplicationContext;
     private final LiveData<String> mErrorStringLiveData;
     private final MutableLiveData<Integer> mDialerAppStateLiveData;
-    private final LiveData<Boolean> mHasOngoingCallLiveData;
 
     /**
      * App state indicates if bluetooth is connected or it should just show the content fragments.
@@ -84,13 +81,7 @@ public class TelecomActivityViewModel extends AndroidViewModel {
                     uiBluetoothMonitor.getBluetoothStateLiveData());
         }
 
-        mHasOngoingCallLiveData = Transformations.map(new ActiveCallListLiveData(),
-                (calls) -> !calls.isEmpty());
         mDialerAppStateLiveData = new DialerAppStateLiveData(mErrorStringLiveData);
-    }
-
-    public LiveData<Boolean> getHasOngoingCallLiveData() {
-        return mHasOngoingCallLiveData;
     }
 
     public MutableLiveData<Integer> getDialerAppState() {
@@ -116,7 +107,7 @@ public class TelecomActivityViewModel extends AndroidViewModel {
         }
 
         private void updateDialerAppState() {
-            L.d(TAG, "updateDialerAppState, error: ", mErrorStringLiveData.getValue());
+            L.d(TAG, "updateDialerAppState, error: %s", mErrorStringLiveData.getValue());
 
             // If bluetooth is not connected, user can make an emergency call. So show the in
             // call fragment no matter if bluetooth is connected or not.

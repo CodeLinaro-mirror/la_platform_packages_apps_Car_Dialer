@@ -35,8 +35,10 @@ import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.dialer.testutils.ShadowViewModelProvider;
 import com.android.car.dialer.ui.common.entity.UiCallLog;
 import com.android.car.dialer.widget.CallTypeIconsView;
+import com.android.car.telephony.common.InMemoryPhoneBook;
 import com.android.car.telephony.common.PhoneCallLog;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -44,6 +46,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.Robolectric;
+import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 
 import java.util.Arrays;
@@ -70,6 +73,7 @@ public class CallHistoryFragmentTest {
     public void setup() {
         MockitoAnnotations.initMocks(this);
 
+        InMemoryPhoneBook.init(RuntimeEnvironment.application);
         UiCallManager.set(mMockUiCallManager);
 
         PhoneCallLog.Record record1 = new PhoneCallLog.Record(TIME_STAMP_1,
@@ -95,6 +99,11 @@ public class CallHistoryFragmentTest {
         mViewHolder = (CallLogViewHolder) recyclerView.findViewHolderForLayoutPosition(0);
     }
 
+    @After
+    public void tearDown() {
+        InMemoryPhoneBook.tearDown();
+    }
+
     @Test
     public void testUI() {
         TextView titleView = mViewHolder.itemView.findViewById(R.id.title);
@@ -103,7 +112,7 @@ public class CallHistoryFragmentTest {
                 R.id.call_type_icons);
 
         assertThat(titleView.getText()).isEqualTo(UI_CALLOG_TITLE);
-        assertThat(textView.getText()).isEqualTo(UI_CALLOG_TEXT);
+        assertThat(textView.getText().toString()).isEqualTo(UI_CALLOG_TEXT);
         assertThat(callTypeIconsView.getCallType(0)).isEqualTo(
                 CallHistoryLiveData.CallType.INCOMING_TYPE);
         assertThat(callTypeIconsView.getCallType(1)).isEqualTo(

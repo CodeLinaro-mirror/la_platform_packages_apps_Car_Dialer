@@ -17,19 +17,14 @@ package com.android.car.dialer.telecom;
 
 import android.content.Intent;
 import android.os.Binder;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
 import android.os.Process;
 import android.telecom.Call;
 import android.telecom.CallAudioState;
 import android.telecom.InCallService;
-import android.telecom.TelecomManager;
 
 import com.android.car.dialer.log.L;
-import com.android.car.dialer.ui.activecall.InCallActivity;
 
-import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -44,55 +39,41 @@ public class InCallServiceImpl extends InCallService {
 
     private CopyOnWriteArrayList<Callback> mCallbacks = new CopyOnWriteArrayList<>();
 
-    private ArrayList<ActiveCallListChangedCallback> mActiveCallListChangedCallbacks =
-            new ArrayList<>();
+    private InCallRouter mInCallRouter;
 
-    private TelecomManager mTelecomManager;
-
-    private Handler mMainHanlder = new Handler(Looper.getMainLooper());
-
-    /**
-     * Listens on active call list changes. Callbacks will be called on main thread.
-     */
+    /** Listens to active call list changes. Callbacks will be called on main thread. */
     public interface ActiveCallListChangedCallback {
 
         /**
          * Called when a new call is added.
+         *
+         * @return if the given call has been handled by this callback.
          */
-        void onTelecomCallAdded(Call telecomCall);
+        boolean onTelecomCallAdded(Call telecomCall);
 
         /**
          * Called when an existing call is removed.
+         *
+         * @return if the given call has been handled by this callback.
          */
-        void onTelecomCallRemoved(Call telecomCall);
+        boolean onTelecomCallRemoved(Call telecomCall);
     }
 
     @Override
     public void onCreate() {
         super.onCreate();
-        mTelecomManager = getApplicationContext().getSystemService(TelecomManager.class);
+        mInCallRouter = new InCallRouter(getApplicationContext());
     }
 
     @Override
     public void onCallAdded(Call telecomCall) {
-        super.onCallAdded(telecomCall);
         L.d(TAG, "onCallAdded: %s", telecomCall);
-
-        // Launch the dialer app whenever there is a new incoming/outgoing call.
-        Intent launchIntent = new Intent(getApplicationContext(), InCallActivity.class);
-        startActivity(launchIntent);
-
-        telecomCall.registerCallback(mCallListener);
-        mCallListener.onStateChanged(telecomCall, telecomCall.getState());
 
         for (Callback callback : mCallbacks) {
             callback.onTelecomCallAdded(telecomCall);
         }
 
-        for (ActiveCallListChangedCallback activeCallListChangedCallback :
-                mActiveCallListChangedCallbacks) {
-            activeCallListChangedCallback.onTelecomCallAdded(telecomCall);
-        }
+        mInCallRouter.onCallAdded(telecomCall);
     }
 
     @Override
@@ -102,12 +83,7 @@ public class InCallServiceImpl extends InCallService {
             callback.onTelecomCallRemoved(telecomCall);
         }
 
-        for (ActiveCallListChangedCallback activeCallListChangedCallback :
-                mActiveCallListChangedCallbacks) {
-            activeCallListChangedCallback.onTelecomCallRemoved(telecomCall);
-        }
-        telecomCall.unregisterCallback(mCallListener);
-        super.onCallRemoved(telecomCall);
+        mInCallRouter.onCallRemoved(telecomCall);
     }
 
     @Override
@@ -117,16 +93,6 @@ public class InCallServiceImpl extends InCallService {
                 ? new LocalBinder()
                 : super.onBind(intent);
     }
-
-    private final Call.Callback mCallListener = new Call.Callback() {
-        @Override
-        public void onStateChanged(Call call, int state) {
-            L.d(TAG, "onStateChanged call: %s, state: %s", call, state);
-            // TODO(b/25190782): here we should show heads-up notification for incoming call,
-            // however system notifications are disabled by System UI and we haven't implemented
-            // a way to show heads-up notifications in embedded mode.
-        }
-    };
 
     @Override
     public boolean onUnbind(Intent intent) {
@@ -153,11 +119,11 @@ public class InCallServiceImpl extends InCallService {
     }
 
     public void addActiveCallListChangedCallback(ActiveCallListChangedCallback callback) {
-        mMainHanlder.post(() -> mActiveCallListChangedCallbacks.add(callback));
+        mInCallRouter.registerActiveCallListChangedCallback(callback);
     }
 
     public void removeActiveCallListChangedCallback(ActiveCallListChangedCallback callback) {
-        mMainHanlder.post(() -> mActiveCallListChangedCallbacks.remove(callback));
+        mInCallRouter.unregisterActiveCallHandler(callback);
     }
 
     @Deprecated
