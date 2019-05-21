@@ -19,8 +19,10 @@ package com.android.car.dialer.ui.contact;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.android.car.dialer.R;
 import com.android.car.telephony.common.TelecomUtils;
 import com.android.car.dialer.telecom.UiCallManager;
@@ -37,7 +39,9 @@ public class ContactListViewHolder extends RecyclerView.ViewHolder {
     private final ContactListAdapter.OnShowContactDetailListener mOnShowContactDetailListener;
     private final ImageView mAvatarView;
     private final TextView mTitleView;
-    private final View mActionButton;
+    private final TextView mTextView;
+    private final View mShowContactDetailView;
+    private final View mCallActionView;
 
     public ContactListViewHolder(@NonNull View itemView,
             ContactListAdapter.OnShowContactDetailListener onShowContactDetailListener) {
@@ -45,21 +49,43 @@ public class ContactListViewHolder extends RecyclerView.ViewHolder {
         mOnShowContactDetailListener = onShowContactDetailListener;
         mAvatarView = itemView.findViewById(R.id.icon);
         mTitleView = itemView.findViewById(R.id.title);
-        mActionButton = itemView.findViewById(R.id.action_button);
+        mTextView = itemView.findViewById(R.id.text);
+        mShowContactDetailView = itemView.findViewById(R.id.show_contact_detail_id);
+        mCallActionView = itemView.findViewById(R.id.call_action_id);
     }
 
     public void onBind(Contact contact) {
         List<PhoneNumber> phoneNumbers = contact.getNumbers();
         TelecomUtils.setContactBitmapAsync(mAvatarView.getContext(), mAvatarView, contact, null);
         mTitleView.setText(contact.getDisplayName());
-        mActionButton.setOnClickListener(
+        setLabelText(contact);
+        mShowContactDetailView.setOnClickListener(
                 view -> mOnShowContactDetailListener.onShowContactDetail(contact));
-        super.itemView.setOnClickListener(view -> {
+        mCallActionView.setOnClickListener(view -> {
             if (phoneNumbers.size() == 1) {
                 UiCallManager.get().placeCall(phoneNumbers.get(0).getRawNumber());
             } else {
                 mOnShowContactDetailListener.onShowContactDetail(contact);
             }
         });
+    }
+
+    private void setLabelText(Contact contact) {
+        if (mTextView == null) {
+            return;
+        }
+
+        String label = "";
+        List<PhoneNumber> numberList = contact.getNumbers();
+
+        if (numberList.size() == 1) {
+            CharSequence readableLabel = numberList.get(0).getReadableLabel(
+                    super.itemView.getContext().getResources());
+            label = readableLabel != null ? readableLabel.toString() : "";
+        } else if (numberList.size() > 1) {
+            label = super.itemView.getContext().getString(R.string.type_multiple);
+        }
+
+        mTextView.setText(label);
     }
 }

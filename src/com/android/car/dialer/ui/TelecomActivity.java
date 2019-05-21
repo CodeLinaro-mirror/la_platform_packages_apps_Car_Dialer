@@ -16,24 +16,24 @@
 
 package com.android.car.dialer.ui;
 
-import android.app.ActionBar;
+import android.app.SearchManager;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.LayerDrawable;
 import android.os.Bundle;
 import android.telephony.PhoneNumberUtils;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toolbar;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.StringRes;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProviders;
-import androidx.viewpager.widget.ViewPager;
 
 import com.android.car.apps.common.widget.CarTabLayout;
 import com.android.car.dialer.R;
@@ -45,6 +45,8 @@ import com.android.car.dialer.ui.common.DialerBaseFragment;
 import com.android.car.dialer.ui.contact.ContactListFragment;
 import com.android.car.dialer.ui.dialpad.DialpadFragment;
 import com.android.car.dialer.ui.favorite.FavoriteFragment;
+import com.android.car.dialer.ui.search.ContactResultsFragment;
+import com.android.car.dialer.ui.settings.DialerSettingsActivity;
 import com.android.car.dialer.ui.warning.NoHfpFragment;
 
 /**
@@ -61,15 +63,14 @@ import com.android.car.dialer.ui.warning.NoHfpFragment;
 public class TelecomActivity extends FragmentActivity implements
         DialerBaseFragment.DialerFragmentParent, FragmentManager.OnBackStackChangedListener {
     private static final String TAG = "CD.TelecomActivity";
-    private static final String CONTENT_FRAGMENT_TAG = "CONTENT_FRAGMENT_TAG";
 
     private LiveData<String> mBluetoothErrorMsgLiveData;
     private LiveData<Integer> mDialerAppStateLiveData;
 
     // View objects for this activity.
-    private CarTabLayout mTabLayout;
-    private ViewPager mViewPager;
+    private CarTabLayout<TelecomPageTab> mTabLayout;
     private Toolbar mToolbar;
+    private TelecomPageTab.Factory mTabFactory;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,41 +82,14 @@ public class TelecomActivity extends FragmentActivity implements
         setActionBar(mToolbar);
         getActionBar().setDisplayHomeAsUpEnabled(true);
 
-        mTabLayout = findViewById(R.id.tab_layout);
-        TelecomPagerAdapter telecomPagerAdapter = new TelecomPagerAdapter(this,
-                getSupportFragmentManager());
-        mViewPager = findViewById(R.id.view_pager);
-        mViewPager.setAdapter(telecomPagerAdapter);
-        for (int i = 0; i < telecomPagerAdapter.getCount(); i++) {
-            mTabLayout.addCarTab(new CarTabLayout.CarTab(telecomPagerAdapter.getPageIcon(i),
-                    telecomPagerAdapter.getPageTitle(i)));
-        }
-        mTabLayout.addOnCarTabSelectedListener(
-                new CarTabLayout.SimpleOnCarTabSelectedListener() {
-                    @Override
-                    public void onCarTabSelected(CarTabLayout.CarTab carTab) {
-                        mViewPager.setCurrentItem(mTabLayout.getCarTabPosition(carTab));
-                    }
-                });
-        mViewPager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
-            @Override
-            public void onPageSelected(int position) {
-                mTabLayout.selectCarTab(position);
-            }
-        });
+        setupTabLayout();
 
         TelecomActivityViewModel viewModel = ViewModelProviders.of(this).get(
                 TelecomActivityViewModel.class);
         mBluetoothErrorMsgLiveData = viewModel.getErrorMessage();
         mDialerAppStateLiveData = viewModel.getDialerAppState();
-        LiveData<Boolean> hasOngoingCallLiveData = viewModel.getHasOngoingCallLiveData();
         mDialerAppStateLiveData.observe(this,
                 dialerAppState -> updateCurrentFragment(dialerAppState));
-        hasOngoingCallLiveData.observe(this, hasOngoingCall -> {
-            if (hasOngoingCall) {
-                startInCallActivity();
-            }
-        });
 
         handleIntent();
     }
@@ -126,6 +100,8 @@ public class TelecomActivity extends FragmentActivity implements
         onBackStackChanged();
         super.onStart();
         L.d(TAG, "onStart");
+
+        maybeStartInCallActivity();
     }
 
     @Override
@@ -168,6 +144,11 @@ public class TelecomActivity extends FragmentActivity implements
             case Intent.ACTION_CALL:
                 number = PhoneNumberUtils.getNumberFromIntent(intent, this);
                 UiCallManager.get().placeCall(number);
+                break;
+
+            case Intent.ACTION_SEARCH:
+                String searchQuery = intent.getStringExtra(SearchManager.QUERY);
+                navigateToContactResultsFragment(searchQuery);
                 break;
 
             default:
@@ -250,19 +231,70 @@ public class TelecomActivity extends FragmentActivity implements
         return getSupportFragmentManager().findFragmentById(R.id.overlay_container);
     }
 
+    private void setupTabLayout() {
+        mTabLayout = findViewById(R.id.tab_layout);
+
+        boolean hasContentFragment = false;
+
+        mTabFactory = new TelecomPageTab.Factory(this, getSupportFragmentManager());
+        for (int i = 0; i < mTabFactory.getTabCount(); i++) {
+            TelecomPageTab telecomPageTab = mTabFactory.createTab(getBaseContext(), i);
+            mTabLayout.addCarTab(telecomPageTab);
+
+            if (telecomPageTab.wasFragmentRestored()) {
+                mTabLayout.selectCarTab(i);
+                hasContentFragment = true;
+            }
+        }
+
+        // First tab will be selected by default. Setup the fragment for it.
+        if (!hasContentFragment) {
+            TelecomPageTab firstTab = mTabLayout.get(0);
+            setContentFragment(firstTab.getFragment(), firstTab.getFragmentTag());
+        }
+
+        mTabLayout.addOnCarTabSelectedListener(
+                new CarTabLayout.SimpleOnCarTabSelectedListener<TelecomPageTab>() {
+                    @Override
+                    public void onCarTabSelected(TelecomPageTab telecomPageTab) {
+                        Fragment fragment = telecomPageTab.getFragment();
+                        setContentFragment(fragment, telecomPageTab.getFragmentTag());
+                    }
+                });
+    }
+
     /** Switch to {@link DialpadFragment} and set the given number as dialed number. */
     private void showDialPadFragment(String number) {
-        getSupportFragmentManager().popBackStackImmediate(
-                CONTENT_FRAGMENT_TAG,
-                FragmentManager.POP_BACK_STACK_INCLUSIVE);
-        mTabLayout.selectCarTab(TelecomPagerAdapter.PAGE.DIAL_PAD);
-        Fragment fragment = getSupportFragmentManager().findFragmentByTag(
-                "android:switcher:" + R.id.view_pager + ":" + mViewPager.getCurrentItem());
+        int dialpadTabIndex  = mTabFactory.getTabIndex(TelecomPageTab.Page.DIAL_PAD);
+        if (dialpadTabIndex == -1) {
+            L.w(TAG, "Dialpad is not a tab.");
+            return;
+        }
+
+        TelecomPageTab dialpadTab = mTabLayout.get(dialpadTabIndex);
+        Fragment fragment = dialpadTab.getFragment();
         if (fragment instanceof DialpadFragment) {
             ((DialpadFragment) fragment).setDialedNumber(number);
         } else {
-            L.w(TAG, "Current tab is not dial pad fragment!");
+            L.w(TAG, "Current tab is not a dialpad fragment!");
         }
+
+        mTabLayout.selectCarTab(dialpadTabIndex);
+    }
+
+    private void setContentFragment(Fragment fragment, String fragmentTag) {
+        L.d(TAG, "setContentFragment: %s", fragment);
+
+        getSupportFragmentManager().executePendingTransactions();
+        while (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+            getSupportFragmentManager().popBackStackImmediate();
+        }
+
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.content_fragment_container, fragment, fragmentTag)
+                .addToBackStack(fragmentTag)
+                .commit();
     }
 
     @Override
@@ -278,28 +310,74 @@ public class TelecomActivity extends FragmentActivity implements
 
     @Override
     public void onBackStackChanged() {
-        int backStackCount = getSupportFragmentManager().getBackStackEntryCount();
-        mTabLayout.setVisibility(backStackCount > 0 ? View.GONE : View.VISIBLE);
-        mViewPager.setVisibility(backStackCount > 0 ? View.GONE : View.VISIBLE);
-        mToolbar.getNavigationView().setEnabled(backStackCount > 0);
-
-        if (backStackCount == 0) {
-            getActionBar().setTitle(R.string.default_toolbar_title);
-        }
+        boolean isBackNavigationAvailable = isBackNavigationAvailable();
+        mTabLayout.setVisibility(isBackNavigationAvailable ? View.GONE : View.VISIBLE);
+        mToolbar.getNavigationView().setEnabled(isBackNavigationAvailable);
     }
 
     @Override
     public boolean onNavigateUp() {
-        if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+        if (isBackNavigationAvailable()) {
             onBackPressed();
             return true;
         }
         return super.onNavigateUp();
     }
 
-    private void startInCallActivity() {
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem menuItem) {
+        if (menuItem.getItemId() == R.id.menu_contacts_search) {
+            navigateToContactResultsFragment(null);
+            return true;
+        }
+
+        if (menuItem.getItemId() == R.id.menu_dialer_setting) {
+            startDialerSettingsActivity();
+            return true;
+        }
+
+        return super.onOptionsItemSelected(menuItem);
+    }
+
+    private void navigateToContactResultsFragment(String query) {
+        Fragment topFragment = getSupportFragmentManager().findFragmentById(
+                R.id.content_fragment_container);
+
+        // Top fragment is ContactResultsFragment, update search query
+        if (topFragment instanceof ContactResultsFragment) {
+            ((ContactResultsFragment) topFragment).setSearchQuery(query);
+            return;
+        }
+
+        ContactResultsFragment fragment = ContactResultsFragment.newInstance(query);
+        pushContentFragment(fragment, ContactResultsFragment.FRAGMENT_TAG);
+    }
+
+    private void maybeStartInCallActivity() {
+        if (UiCallManager.get().getCallList().isEmpty()) {
+            return;
+        }
+
         L.d(TAG, "Start InCallActivity");
         Intent launchIntent = new Intent(getApplicationContext(), InCallActivity.class);
+        startActivity(launchIntent);
+    }
+
+    /** If the back button on action bar is available to navigate up. */
+    private boolean isBackNavigationAvailable() {
+        return getSupportFragmentManager().getBackStackEntryCount() > 1;
+    }
+
+    private void startDialerSettingsActivity() {
+        L.d(TAG, "Start DialerSettingsActivity");
+        Intent launchIntent = new Intent(getApplicationContext(), DialerSettingsActivity.class);
         startActivity(launchIntent);
     }
 }
