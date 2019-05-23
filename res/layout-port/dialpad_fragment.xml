@@ -31,7 +31,7 @@
     <TextView
         android:id="@+id/title"
         android:layout_width="0dp"
-        android:layout_height="@dimen/dialpad_info_title_container_size"
+        android:layout_height="wrap_content"
         android:textColor="@color/dialpad_title_color"
         android:focusable="true"
         android:maxLines="1"
@@ -62,17 +62,17 @@
         android:textColor="@color/dialpad_title_color"
         android:focusable="true"
         android:singleLine="true"
+        android:layout_marginTop="@dimen/display_name_padding"
         app:layout_constraintTop_toBottomOf="@id/title"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <ImageButton
+    <ImageView
         android:id="@+id/call_button"
         style="@style/DialpadPrimaryButton"
         android:layout_width="wrap_content"
         android:layout_height="@dimen/call_button_height"
         android:src="@drawable/icon_call_button"
-        android:background="@drawable/dialer_ripple_background"
         android:layout_marginBottom="@dimen/call_button_bottom_margin"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"

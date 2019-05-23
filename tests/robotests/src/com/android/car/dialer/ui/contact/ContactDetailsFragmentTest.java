@@ -48,7 +48,7 @@ import org.robolectric.annotation.Config;
 
 import java.util.Arrays;
 
-@Config(shadows = {ShadowViewModelProvider.class})
+@Config(shadows = {ShadowViewModelProvider.class}, qualifiers = "h610dp")
 @RunWith(CarDialerRobolectricTestRunner.class)
 public class ContactDetailsFragmentTest {
     private static final String DISPLAY_NAME = "NAME";
@@ -92,7 +92,7 @@ public class ContactDetailsFragmentTest {
     @Test
     public void testCreateWithContact() {
         when(mMockContact.getLookupUri()).thenReturn(mMockContactLookupUri);
-        mContactDetailsFragment = ContactDetailsFragment.newInstance(mMockContact, null);
+        mContactDetailsFragment = ContactDetailsFragment.newInstance(mMockContact);
 
         setUpFragment();
 
@@ -126,14 +126,15 @@ public class ContactDetailsFragmentTest {
      */
     private void verifyPhoneNumber(int position) {
         View child = mListView.getChildAt(position);
+        View callButton = child.findViewById(R.id.call_action_id);
 
         assertThat(((TextView) child.findViewById(R.id.title)).getText().toString()).isEqualTo(
                 RAW_NUMBERS[position - 1]);
-        assertThat(child.hasOnClickListeners()).isTrue();
+        assertThat(callButton.hasOnClickListeners()).isTrue();
 
         int invocations = Mockito.mockingDetails(mMockUiCallManager).getInvocations().size();
 
-        child.performClick();
+        callButton.performClick();
 
         verify(mMockUiCallManager, times(invocations + 1)).placeCall(Mockito.any());
     }
