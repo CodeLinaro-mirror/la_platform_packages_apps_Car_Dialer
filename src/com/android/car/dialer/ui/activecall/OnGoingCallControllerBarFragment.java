@@ -123,8 +123,6 @@ public class OnGoingCallControllerBarFragment extends Fragment {
         mAudioRouteSelectionDialog = new AlertDialog.Builder(getContext())
                 .setView(dialogView)
                 .create();
-        mAudioRouteSelectionDialog.getWindow().setBackgroundDrawableResource(
-                android.R.color.transparent);
 
         List<Integer> availableRoutes = UiCallManager.get().getSupportedAudioRoute();
         int activeRoute = UiCallManager.get().getAudioRoute();
@@ -145,7 +143,10 @@ public class OnGoingCallControllerBarFragment extends Fragment {
         if (getArguments() != null) {
             mCallState = getArguments().getInt(CALL_STATE);
         }
-        fragmentView.findViewById(R.id.mute_button).setOnClickListener((v) -> {
+
+        View muteButton = fragmentView.findViewById(R.id.mute_button);
+        muteButton.setActivated(UiCallManager.get().getMuted());
+        muteButton.setOnClickListener((v) -> {
             if (mOnGoingCallControllerBarCallback == null) {
                 return;
             }
