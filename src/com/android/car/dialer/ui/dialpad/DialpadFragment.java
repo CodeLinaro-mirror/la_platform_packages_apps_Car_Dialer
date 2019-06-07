@@ -16,6 +16,7 @@
 
 package com.android.car.dialer.ui.dialpad;
 
+import android.app.ActionBar;
 import android.content.Context;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
@@ -170,7 +171,7 @@ public class DialpadFragment extends DialerBaseFragment implements
                 mMode == MODE_EMERGENCY ? R.style.EmergencyDialNumber : R.style.DialNumber);
         mTitleView.setGravity(Gravity.CENTER);
         mDisplayName = rootView.findViewById(R.id.display_name);
-        ImageButton callButton = rootView.findViewById(R.id.call_button);
+        View callButton = rootView.findViewById(R.id.call_button);
         mDeleteButton = rootView.findViewById(R.id.delete_button);
 
         if (mMode == MODE_IN_CALL) {
@@ -212,9 +213,12 @@ public class DialpadFragment extends DialerBaseFragment implements
     }
 
     @Override
-    protected void setActionBarTitle() {
+    protected void setupActionBar(ActionBar actionBar) {
+        // Only setup the actionbar if we're in dial mode.
+        // In all the other modes, there will be another fragment in the activity
+        // at the same time, and we don't want to mess up it's action bar.
         if (mMode == MODE_DIAL) {
-            super.setActionBarTitle();
+            super.setupActionBar(actionBar);
         }
     }
 

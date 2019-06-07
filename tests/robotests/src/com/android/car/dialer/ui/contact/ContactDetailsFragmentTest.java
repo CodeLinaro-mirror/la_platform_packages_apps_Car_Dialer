@@ -18,10 +18,10 @@ package com.android.car.dialer.ui.contact;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.robolectric.Shadows.shadowOf;
 
-import android.content.Intent;
 import android.net.Uri;
 import android.view.View;
 import android.widget.TextView;
@@ -32,7 +32,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.android.car.dialer.CarDialerRobolectricTestRunner;
 import com.android.car.dialer.FragmentTestActivity;
 import com.android.car.dialer.R;
-import com.android.car.dialer.testutils.ShadowViewModelProvider;
+import com.android.car.dialer.telecom.UiCallManager;
+import com.android.car.dialer.testutils.ShadowAndroidViewModelFactory;
 import com.android.car.telephony.common.Contact;
 import com.android.car.telephony.common.PhoneNumber;
 
@@ -40,13 +41,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
 
 import java.util.Arrays;
 
-@Config(shadows = {ShadowViewModelProvider.class})
+@Config(shadows = {ShadowAndroidViewModelFactory.class}, qualifiers = "h610dp")
 @RunWith(CarDialerRobolectricTestRunner.class)
 public class ContactDetailsFragmentTest {
     private static final String DISPLAY_NAME = "NAME";
@@ -65,6 +67,8 @@ public class ContactDetailsFragmentTest {
     private PhoneNumber mMockPhoneNumber1;
     @Mock
     private PhoneNumber mMockPhoneNumber2;
+    @Mock
+    private UiCallManager mMockUiCallManager;
 
     @Before
     public void setUp() {
@@ -76,9 +80,12 @@ public class ContactDetailsFragmentTest {
         when(mMockContact.getNumbers()).thenReturn(
                 Arrays.asList(mMockPhoneNumber1, mMockPhoneNumber2));
 
+        UiCallManager.set(mMockUiCallManager);
+
         MutableLiveData<Contact> contactDetails = new MutableLiveData<>();
         contactDetails.setValue(mMockContact);
-        ShadowViewModelProvider.add(ContactDetailsViewModel.class, mMockContactDetailsViewModel);
+        ShadowAndroidViewModelFactory.add(ContactDetailsViewModel.class,
+                mMockContactDetailsViewModel);
         when(mMockContactDetailsViewModel.getContactDetails(mMockContactLookupUri)).thenReturn(
                 contactDetails);
     }
@@ -86,7 +93,7 @@ public class ContactDetailsFragmentTest {
     @Test
     public void testCreateWithContact() {
         when(mMockContact.getLookupUri()).thenReturn(mMockContactLookupUri);
-        mContactDetailsFragment = ContactDetailsFragment.newInstance(mMockContact, null);
+        mContactDetailsFragment = ContactDetailsFragment.newInstance(mMockContact);
 
         setUpFragment();
 
@@ -120,16 +127,16 @@ public class ContactDetailsFragmentTest {
      */
     private void verifyPhoneNumber(int position) {
         View child = mListView.getChildAt(position);
+        View callButton = child.findViewById(R.id.call_action_id);
 
         assertThat(((TextView) child.findViewById(R.id.title)).getText().toString()).isEqualTo(
                 RAW_NUMBERS[position - 1]);
-        assertThat(child.hasOnClickListeners()).isTrue();
+        assertThat(callButton.hasOnClickListeners()).isTrue();
 
-        child.performClick();
+        int invocations = Mockito.mockingDetails(mMockUiCallManager).getInvocations().size();
 
-        Intent startedIntent = shadowOf(mFragmentTestActivity).getNextStartedActivity();
-        assertThat(startedIntent.getAction()).isEqualTo(Intent.ACTION_CALL);
-        assertThat(startedIntent.getData()).isEqualTo(
-                Uri.parse(ContactDetailsAdapter.TELEPHONE_URI_PREFIX + RAW_NUMBERS[position - 1]));
+        callButton.performClick();
+
+        verify(mMockUiCallManager, times(invocations + 1)).placeCall(Mockito.any());
     }
 }

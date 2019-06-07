@@ -22,6 +22,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.net.Uri;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.lifecycle.MutableLiveData;
@@ -32,7 +33,7 @@ import com.android.car.dialer.FragmentTestActivity;
 import com.android.car.dialer.R;
 import com.android.car.dialer.livedata.CallHistoryLiveData;
 import com.android.car.dialer.telecom.UiCallManager;
-import com.android.car.dialer.testutils.ShadowViewModelProvider;
+import com.android.car.dialer.testutils.ShadowAndroidViewModelFactory;
 import com.android.car.dialer.ui.common.entity.UiCallLog;
 import com.android.car.dialer.widget.CallTypeIconsView;
 import com.android.car.telephony.common.InMemoryPhoneBook;
@@ -52,7 +53,7 @@ import org.robolectric.annotation.Config;
 import java.util.Arrays;
 import java.util.List;
 
-@Config(shadows = {ShadowViewModelProvider.class})
+@Config(shadows = {ShadowAndroidViewModelFactory.class})
 @RunWith(CarDialerRobolectricTestRunner.class)
 public class CallHistoryFragmentTest {
     private static final String PHONE_NUMBER = "6502530000";
@@ -85,7 +86,7 @@ public class CallHistoryFragmentTest {
 
         MutableLiveData<List<UiCallLog>> callLog = new MutableLiveData<>();
         callLog.setValue(Arrays.asList(uiCallLog));
-        ShadowViewModelProvider.add(CallHistoryViewModel.class, mMockCallHistoryViewModel);
+        ShadowAndroidViewModelFactory.add(CallHistoryViewModel.class, mMockCallHistoryViewModel);
         when(mMockCallHistoryViewModel.getCallHistory()).thenReturn(callLog);
 
         CallHistoryFragment callHistoryFragment = CallHistoryFragment.newInstance();
@@ -121,9 +122,10 @@ public class CallHistoryFragmentTest {
 
     @Test
     public void testClick_placeCall() {
-        assertThat(mViewHolder.itemView.hasOnClickListeners()).isTrue();
+        View callButton = mViewHolder.itemView.findViewById(R.id.call_action_id);
+        assertThat(callButton.hasOnClickListeners()).isTrue();
 
-        mViewHolder.itemView.performClick();
+        callButton.performClick();
 
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
         verify(mMockUiCallManager).placeCall(captor.capture());
