@@ -18,6 +18,7 @@ package com.android.car.dialer.ui;
 
 import android.app.SearchManager;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.telephony.PhoneNumberUtils;
@@ -34,6 +35,7 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.ViewModelProviders;
+import androidx.preference.PreferenceManager;
 
 import com.android.car.apps.common.widget.CarTabLayout;
 import com.android.car.dialer.R;
@@ -70,6 +72,7 @@ public class TelecomActivity extends FragmentActivity implements
     // View objects for this activity.
     private CarTabLayout<TelecomPageTab> mTabLayout;
     private Toolbar mToolbar;
+    private View mToolbarContainer;
     private TelecomPageTab.Factory mTabFactory;
 
     @Override
@@ -81,6 +84,8 @@ public class TelecomActivity extends FragmentActivity implements
         mToolbar = findViewById(R.id.car_toolbar);
         setActionBar(mToolbar);
         getActionBar().setDisplayHomeAsUpEnabled(true);
+
+        mToolbarContainer = findViewById(R.id.car_toolbar_container);
 
         setupTabLayout();
 
@@ -247,10 +252,12 @@ public class TelecomActivity extends FragmentActivity implements
             }
         }
 
-        // First tab will be selected by default. Setup the fragment for it.
+        // Select the starting tab and set up the fragment for it.
         if (!hasContentFragment) {
-            TelecomPageTab firstTab = mTabLayout.get(0);
-            setContentFragment(firstTab.getFragment(), firstTab.getFragmentTag());
+            int startTabIndex = getTabFromSharedPreference();
+            TelecomPageTab startTab = mTabLayout.get(startTabIndex);
+            mTabLayout.selectCarTab(startTabIndex);
+            setContentFragment(startTab.getFragment(), startTab.getFragmentTag());
         }
 
         mTabLayout.addOnCarTabSelectedListener(
@@ -265,7 +272,7 @@ public class TelecomActivity extends FragmentActivity implements
 
     /** Switch to {@link DialpadFragment} and set the given number as dialed number. */
     private void showDialPadFragment(String number) {
-        int dialpadTabIndex  = mTabFactory.getTabIndex(TelecomPageTab.Page.DIAL_PAD);
+        int dialpadTabIndex = mTabFactory.getTabIndex(TelecomPageTab.Page.DIAL_PAD);
         if (dialpadTabIndex == -1) {
             L.w(TAG, "Dialpad is not a tab.");
             return;
@@ -328,22 +335,16 @@ public class TelecomActivity extends FragmentActivity implements
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.main_menu, menu);
+
+        MenuItem searchMenu = menu.findItem(R.id.menu_contacts_search);
+        Intent searchIntent = new Intent(getApplicationContext(), TelecomActivity.class);
+        searchIntent.setAction(Intent.ACTION_SEARCH);
+        searchMenu.setIntent(searchIntent);
+
+        MenuItem settingsMenu = menu.findItem(R.id.menu_dialer_setting);
+        Intent settingsIntent = new Intent(getApplicationContext(), DialerSettingsActivity.class);
+        settingsMenu.setIntent(settingsIntent);
         return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem menuItem) {
-        if (menuItem.getItemId() == R.id.menu_contacts_search) {
-            navigateToContactResultsFragment(null);
-            return true;
-        }
-
-        if (menuItem.getItemId() == R.id.menu_dialer_setting) {
-            startDialerSettingsActivity();
-            return true;
-        }
-
-        return super.onOptionsItemSelected(menuItem);
     }
 
     private void navigateToContactResultsFragment(String query) {
@@ -375,9 +376,19 @@ public class TelecomActivity extends FragmentActivity implements
         return getSupportFragmentManager().getBackStackEntryCount() > 1;
     }
 
-    private void startDialerSettingsActivity() {
-        L.d(TAG, "Start DialerSettingsActivity");
-        Intent launchIntent = new Intent(getApplicationContext(), DialerSettingsActivity.class);
-        startActivity(launchIntent);
+    private int getTabFromSharedPreference() {
+        String key = getResources().getString(R.string.pref_start_page_key);
+        String defaultValue = getResources().getStringArray(R.array.tabs_config)[0];
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        return mTabFactory.getTabIndex(sharedPreferences.getString(key, defaultValue));
+    }
+
+    /** Sets the background of the Activity's action bar to a {@link Drawable} */
+    public void setActionBarBackground(@Nullable Drawable drawable) {
+        if (mToolbarContainer != null) {
+            mToolbarContainer.setBackground(drawable);
+        } else {
+            mToolbar.setBackground(drawable);
+        }
     }
 }
