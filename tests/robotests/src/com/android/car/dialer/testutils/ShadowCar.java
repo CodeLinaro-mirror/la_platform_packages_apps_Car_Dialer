@@ -16,35 +16,32 @@
 
 package com.android.car.dialer.testutils;
 
-import androidx.lifecycle.ViewModel;
-import androidx.lifecycle.ViewModelProvider;
+import android.car.Car;
+import android.content.Context;
 
 import org.robolectric.annotation.Implementation;
 import org.robolectric.annotation.Implements;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
- * Shadow class for {@link ViewModelProvider}.
+ * Shadow class for {@link Car}.
  */
-@Implements(ViewModelProvider.class)
-public class ShadowViewModelProvider {
+@Implements(Car.class)
+public class ShadowCar {
 
-    private static Map<Class, ViewModel> viewModelMap = new HashMap<>();
+    private static Car sCar;
 
     /**
-     * Adds class and view model pairs to the map.
+     * Returns a mocked version of a {@link Car} object.
      */
-    public static <T extends ViewModel> void add(Class<T> modelClass, T viewModel) {
-        viewModelMap.put(modelClass, viewModel);
+    @Implementation
+    protected static Car createCar(Context context) {
+        return sCar;
     }
 
     /**
-     * Returns a ViewModel from the map.
+     * Sets {@code sCar}.
      */
-    @Implementation
-    public <T extends ViewModel> T get(Class<T> modelClass) {
-        return (T) viewModelMap.get(modelClass);
+    public static void setCar(Car car) {
+        sCar = car;
     }
 }

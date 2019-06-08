@@ -19,8 +19,9 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:title="@string/setting_title">
 
-    <Preference
+    <ListPreference
         android:key="@string/pref_start_page_key"
-        android:title="@string/pref_start_page_title"/>
-
+        android:title="@string/pref_start_page_title"
+        android:entries="@array/tabs_title"
+        android:entryValues="@array/tabs_config"/>
 </PreferenceScreen>
