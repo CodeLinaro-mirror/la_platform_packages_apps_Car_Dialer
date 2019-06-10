@@ -18,6 +18,8 @@ package com.android.car.dialer;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 
+import androidx.annotation.Nullable;
+import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 
@@ -32,12 +34,15 @@ public class FragmentTestActivity extends FragmentActivity implements
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setTheme(R.style.Theme_Dialer);
         setContentView(R.layout.test_activity);
     }
 
     public void setFragment(Fragment fragment) {
-        getSupportFragmentManager().beginTransaction().replace(R.id.test_fragment_container,
-                fragment).commitNow();
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.test_fragment_container, fragment)
+                .commitNow();
     }
 
     @Override
@@ -52,5 +57,9 @@ public class FragmentTestActivity extends FragmentActivity implements
                 .add(fragment, fragmentTag)
                 .addToBackStack(fragmentTag)
                 .commit();
+    }
+
+    public void showDialog(DialogFragment dialogFragment, @Nullable String tag) {
+        dialogFragment.show(getSupportFragmentManager(), tag);
     }
 }

@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,7 +35,7 @@ import com.android.car.dialer.CarDialerRobolectricTestRunner;
 import com.android.car.dialer.FragmentTestActivity;
 import com.android.car.dialer.R;
 import com.android.car.dialer.telecom.UiCallManager;
-import com.android.car.dialer.testutils.ShadowViewModelProvider;
+import com.android.car.dialer.testutils.ShadowAndroidViewModelFactory;
 import com.android.car.telephony.common.Contact;
 import com.android.car.telephony.common.PhoneNumber;
 
@@ -46,11 +47,12 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowAlertDialog;
 
 import java.util.Arrays;
 import java.util.List;
 
-@Config(shadows = {ShadowViewModelProvider.class})
+@Config(shadows = {ShadowAndroidViewModelFactory.class})
 @RunWith(CarDialerRobolectricTestRunner.class)
 public class ContactListFragmentTest {
     private static final String RAW_NUMBNER = "6502530000";
@@ -79,12 +81,13 @@ public class ContactListFragmentTest {
 
         MutableLiveData<List<Contact>> contactList = new MutableLiveData<>();
         contactList.setValue(Arrays.asList(mMockContact1, mMockContact2, mMockContact3));
-        ShadowViewModelProvider.add(ContactListViewModel.class, mMockContactListViewModel);
+        ShadowAndroidViewModelFactory.add(ContactListViewModel.class, mMockContactListViewModel);
         when(mMockContactListViewModel.getAllContacts()).thenReturn(contactList);
 
         MutableLiveData<Contact> contactDetail = new MutableLiveData<>();
         contactDetail.setValue(mMockContact1);
-        ShadowViewModelProvider.add(ContactDetailsViewModel.class, mMockContactDetailsViewModel);
+        ShadowAndroidViewModelFactory.add(ContactDetailsViewModel.class,
+                mMockContactDetailsViewModel);
         when(mMockContactDetailsViewModel.getContactDetails(any())).thenReturn(contactDetail);
     }
 
@@ -106,17 +109,18 @@ public class ContactListFragmentTest {
     }
 
     @Test
-    public void testClickCallActionButton_ContactHasMultipleNumbers_showContactDetail() {
+    public void testClickCallActionButton_ContactHasMultipleNumbers_showAlertDialog() {
         PhoneNumber otherMockPhoneNumber = mock(PhoneNumber.class);
         when(mMockContact1.getNumbers()).thenReturn(
                 Arrays.asList(mMockPhoneNumber, otherMockPhoneNumber));
         setUpFragment();
 
+        assertThat(ShadowAlertDialog.getLatestAlertDialog()).isNull();
         View callActionView = mViewHolder.itemView.findViewById(R.id.call_action_id);
         callActionView.performClick();
 
-        // verify contact detail is shown.
-        verifyShowContactDetail();
+        verify(mMockUiCallManager, never()).placeCall(any());
+        assertThat(ShadowAlertDialog.getLatestAlertDialog()).isNotNull();
     }
 
     @Test

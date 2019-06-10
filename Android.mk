@@ -25,6 +25,8 @@ LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
 LOCAL_PACKAGE_NAME := CarDialerApp
 LOCAL_PRIVATE_PLATFORM_APIS := true
 
+LOCAL_REQUIRED_MODULES := privapp_whitelist_com.android.car.dialer
+
 LOCAL_OVERRIDES_PACKAGES := Dialer
 
 LOCAL_MODULE_TAGS := optional
@@ -42,6 +44,12 @@ LOCAL_STATIC_ANDROID_LIBRARIES += \
     car-arch-common \
     car-telephony-common \
     car-theme-lib \
+
+# Including the resources for the static android libraries allows to pick up their static overlays.
+LOCAL_RESOURCE_DIR += \
+    $(LOCAL_PATH)/../libs/car-apps-common/res \
+    $(LOCAL_PATH)/../libs/car-telephony-common/res \
+    $(LOCAL_PATH)/../libs/car-theme-lib/res
 
 LOCAL_STATIC_JAVA_LIBRARIES := \
     androidx-constraintlayout_constraintlayout-solver \
