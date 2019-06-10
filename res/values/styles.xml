@@ -38,10 +38,10 @@
         <item name="android:clickable">true</item>
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginStart">@dimen/keypad_margin_x</item>
-        <item name="android:layout_marginEnd">@dimen/keypad_margin_x</item>
-        <item name="android:layout_marginTop">@dimen/keypad_margin_y</item>
-        <item name="android:layout_marginBottom">@dimen/keypad_margin_y</item>
+        <item name="android:paddingStart">@dimen/keypad_margin_x</item>
+        <item name="android:paddingEnd">@dimen/keypad_margin_x</item>
+        <item name="android:paddingTop">@dimen/keypad_margin_y</item>
+        <item name="android:paddingBottom">@dimen/keypad_margin_y</item>
         <item name="android:minWidth">@dimen/touch_target_size</item>
         <item name="android:minHeight">@dimen/touch_target_size</item>
         <item name="android:background">?android:attr/selectableItemBackground</item>
@@ -73,13 +73,13 @@
     <style name="Widget.Dialer.Toolbar" parent="*android:Widget.DeviceDefault.Toolbar">
         <!-- No padding for navigation button which is car_margin wide -->
         <item name="android:paddingStart">0dp</item>
-        <!-- Distance of menu item from toolbar end edge -->
-        <item name="android:paddingEnd">@*android:dimen/car_padding_4</item>
-        <item name="android:contentInsetStart">@*android:dimen/car_margin</item>
+        <!-- Menu item has padding/margin to define the end distance from toolbar edge -->
+        <item name="android:paddingEnd">0dp</item>
+        <item name="android:contentInsetStart">0dp</item>
         <item name="android:contentInsetEnd">@*android:dimen/car_margin</item>
         <!-- Override the max height of navigation button and menu button -->
         <item name="android:maxButtonHeight">?android:attr/actionBarSize</item>
-        <item name="android:navigationIcon">@drawable/navigation_icon</item>
+        <item name="android:navigationIcon">@drawable/ic_arrow_back</item>
         <item name="android:titleTextAppearance">@style/TextAppearance.Dialer.Widget.Toolbar.Title
         </item>
         <!-- Navigation button style -->
@@ -93,6 +93,7 @@
 
     <style name="Widget.Dialer.Navigation"
            parent="android:Widget.Material.Toolbar.Button.Navigation">
+        <item name="android:minWidth">@*android:dimen/car_margin</item>
         <item name="android:background">?android:attr/actionBarItemBackground</item>
     </style>
 
@@ -102,8 +103,12 @@
     </style>
 
     <style name="Widget.Dialer.ActionButton.Overflow" parent="android:Widget.DeviceDefault.ActionButton.Overflow">
+        <item name="android:src">@drawable/ic_overflow</item>
         <item name="android:minWidth">@dimen/touch_target_size</item>
         <item name="android:minHeight">@dimen/touch_target_size</item>
+        <item name="android:paddingStart">0dp</item>
+        <item name="android:paddingEnd">@dimen/menu_item_margin_x</item>
+        <item name="android:background">@android:color/transparent</item>
     </style>
 
     <!-- In-call styling for everything except short landscape screens -->
@@ -121,5 +126,29 @@
 
     <!-- Contact details -->
     <style name="TextAppearance.ContactDetailsTitle" parent="@style/TextAppearance.Display2"/>
+
+    <style name="hero_button">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">@dimen/touch_target_size</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:drawablePadding">@*android:dimen/car_padding_3</item>
+        <item name="android:drawableTint">@color/primary_icon_color</item>
+        <item name="android:minWidth">156dp</item>
+        <item name="android:maxWidth">268dp</item>
+        <item name="android:background">@drawable/hero_button_background</item>
+        <item name="android:paddingStart">@*android:dimen/car_padding_3</item>
+        <item name="android:paddingEnd">@*android:dimen/car_padding_4</item>
+        <item name="android:textAppearance">@style/TextAppearance.Body3</item>
+        <item name="android:singleLine">true</item>
+    </style>
+
+    <!-- Display options defined for ActionBar-->
+    <style name="RootToolbarDisplayOptions">
+        <item name="android:displayOptions">useLogo|showHome|showTitle|showCustom</item>
+    </style>
+
+    <style name="HomeAsUpDisplayOptions">
+        <item name="android:displayOptions">showTitle|homeAsUp|showCustom</item>
+    </style>
 
 </resources>
