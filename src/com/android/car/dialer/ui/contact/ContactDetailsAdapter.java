@@ -17,8 +17,6 @@
 package com.android.car.dialer.ui.contact;
 
 import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -30,12 +28,13 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.car.dialer.R;
 import com.android.car.dialer.log.L;
+import com.android.car.dialer.ui.common.DialerUtils;
 import com.android.car.telephony.common.Contact;
 import com.android.car.telephony.common.PhoneNumber;
-import com.android.car.telephony.common.TelecomUtils;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.util.ArrayList;
 
 class ContactDetailsAdapter extends RecyclerView.Adapter<ContactDetailsViewHolder> {
 
@@ -48,28 +47,43 @@ class ContactDetailsAdapter extends RecyclerView.Adapter<ContactDetailsViewHolde
 
     private final Context mContext;
 
-    private Contact mContact;
+    private final ArrayList<Object> mItems = new ArrayList<Object>();
 
     public ContactDetailsAdapter(@NonNull Context context, @Nullable Contact contact) {
         super();
         mContext = context;
-        mContact = contact;
+        setContact(contact);
     }
 
     void setContact(Contact contact) {
         L.d(TAG, "setContact %s", contact);
-        mContact = contact;
+        mItems.clear();
+        if (shouldShowHeader()) {
+            mItems.add(contact);
+        }
+        if (contact != null) {
+            mItems.addAll(contact.getNumbers());
+        }
         notifyDataSetChanged();
+    }
+
+    private boolean shouldShowHeader() {
+        return !DialerUtils.isShortScreen(mContext);
     }
 
     @Override
     public int getItemViewType(int position) {
-        return position == 0 ? ID_HEADER : ID_CONTENT;
+        Object obj = mItems.get(position);
+        if (obj == null || obj instanceof Contact) {
+            return ID_HEADER;
+        } else {
+            return ID_CONTENT;
+        }
     }
 
     @Override
     public int getItemCount() {
-        return mContact == null ? 1 : mContact.getNumbers().size() + 1;  // +1 for the header row.
+        return mItems.size();
     }
 
     @Override
@@ -77,7 +91,7 @@ class ContactDetailsAdapter extends RecyclerView.Adapter<ContactDetailsViewHolde
         int layoutResId;
         switch (viewType) {
             case ID_HEADER:
-                layoutResId = R.layout.contact_detail_name_image;
+                layoutResId = R.layout.contact_details_name_image;
                 break;
             case ID_CONTENT:
                 layoutResId = R.layout.contact_details_number;
@@ -96,41 +110,10 @@ class ContactDetailsAdapter extends RecyclerView.Adapter<ContactDetailsViewHolde
     public void onBindViewHolder(ContactDetailsViewHolder viewHolder, int position) {
         switch (viewHolder.getItemViewType()) {
             case ID_HEADER:
-                viewHolder.title.setText(
-                        mContact == null ? mContext.getString(R.string.error_contact_deleted)
-                                : mContact.getDisplayName());
-                TelecomUtils.setContactBitmapAsync(mContext, viewHolder.avatar, mContact, null);
-                // Just in case a viewholder object gets recycled.
-                viewHolder.itemView.setOnClickListener(null);
+                viewHolder.bind(mContext, (Contact) mItems.get(position));
                 break;
             case ID_CONTENT:
-                PhoneNumber phoneNumber = mContact.getNumbers().get(position - 1);
-
-                viewHolder.title.setText(phoneNumber.getRawNumber());
-
-                // Present the phone number type.
-                CharSequence readableLabel = phoneNumber.getReadableLabel(mContext.getResources());
-                if (phoneNumber.isPrimary()) {
-                    viewHolder.text.setText(
-                            mContext.getString(R.string.primary_number_description, readableLabel));
-                } else {
-                    viewHolder.text.setText(readableLabel);
-                }
-
-                viewHolder.itemView.setOnClickListener(v -> {
-                    Intent callIntent = new Intent(Intent.ACTION_CALL);
-                    callIntent.setData(Uri.parse(TELEPHONE_URI_PREFIX + phoneNumber.getRawNumber()));
-                    mContext.startActivity(callIntent);
-                });
-
-                viewHolder.sendTextTouchTarget.setOnClickListener(v -> {
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setData(Uri.parse("smsto:"));
-                    intent.setType("vnd.android-dir/mms-sms");
-                    intent.putExtra("address", phoneNumber.getRawNumber());
-                    mContext.startActivity(intent);
-                });
-
+                viewHolder.bind(mContext, (PhoneNumber) mItems.get(position));
                 break;
             default:
                 Log.e(TAG, "Unknown view type " + viewHolder.getItemViewType());
