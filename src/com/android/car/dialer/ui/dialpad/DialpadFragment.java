@@ -21,7 +21,6 @@ import android.content.Context;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.provider.CallLog;
 import android.provider.Settings;
 import android.telecom.Call;
@@ -33,13 +32,10 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Chronometer;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
-import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.constraintlayout.widget.Guideline;
 import androidx.lifecycle.ViewModelProviders;
 
 import com.android.car.dialer.R;
@@ -111,7 +107,6 @@ public class DialpadFragment extends DialerBaseFragment implements
 
     private TextView mTitleView;
     private TextView mDisplayName;
-    private Chronometer mCallStateView;
     private ImageButton mDeleteButton;
     private int mMode;
     private StringBuffer mNumber = new StringBuffer(MAX_DIAL_NUMBER);
@@ -176,48 +171,17 @@ public class DialpadFragment extends DialerBaseFragment implements
                 mMode == MODE_EMERGENCY ? R.style.EmergencyDialNumber : R.style.DialNumber);
         mTitleView.setGravity(Gravity.CENTER);
         mDisplayName = rootView.findViewById(R.id.display_name);
-        mCallStateView = rootView.findViewById(R.id.call_state);
-
         View callButton = rootView.findViewById(R.id.call_button);
         mDeleteButton = rootView.findViewById(R.id.delete_button);
 
         if (mMode == MODE_IN_CALL) {
-            Guideline guideLine = rootView.findViewById(R.id.dialpad_info_guideline);
-            // The guideline doesn't exist on portrait
-            if (guideLine != null) {
-                ConstraintLayout.LayoutParams params =
-                        (ConstraintLayout.LayoutParams) guideLine.getLayoutParams();
-                params.guidePercent = getContext().getResources().getFloat(
-                        R.dimen.dialpad_info_guideline_in_call);
-                guideLine.setLayoutParams(params);
-            }
             mDeleteButton.setVisibility(View.GONE);
             callButton.setVisibility(View.GONE);
-            mCallStateView.setVisibility(View.VISIBLE);
-
-            InCallViewModel viewModel = ViewModelProviders.of(getActivity()).get(
-                    InCallViewModel.class);
-            mActiveCall = viewModel.getPrimaryCall().getValue();
-            viewModel.getCallStateAndConnectTime().observe(this, (pair) -> {
-                if (pair == null) {
-                    mCallStateView.stop();
-                    mCallStateView.setText("");
-                    return;
-                }
-                if (pair.first == Call.STATE_ACTIVE) {
-                    mCallStateView.setBase(pair.second
-                            - System.currentTimeMillis() + SystemClock.elapsedRealtime());
-                    mCallStateView.start();
-                } else {
-                    mCallStateView.stop();
-                    mCallStateView.setText(TelecomUtils.callStateToUiString(
-                            getContext(), pair.first));
-                }
-            });
+            mActiveCall = ViewModelProviders.of(getActivity()).get(
+                    InCallViewModel.class).getPrimaryCall().getValue();
         } else {
             callButton.setVisibility(View.VISIBLE);
             mDeleteButton.setVisibility(View.GONE);
-            mCallStateView.setVisibility(View.GONE);
             Context context = getContext();
             callButton.setOnClickListener((unusedView) -> {
                 if (!TextUtils.isEmpty(mNumber.toString())) {

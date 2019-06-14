@@ -20,18 +20,17 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.telecom.Call;
+import android.text.TextUtils;
+import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Chronometer;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.util.Pair;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProviders;
 
@@ -58,10 +57,10 @@ public class InCallFragment extends Fragment implements
     private static final String TAG_CALL_RINGING = "CallStateRinging";
     private static final String TAG_CALL_OTHER = "CallStateOther";
 
-    private DialpadFragment mDialpadFragment;
+    private Fragment mDialpadFragment;
     private View mUserProfileContainerView;
     private View mDialerFragmentContainer;
-    private Chronometer mUserProfileCallStateText;
+    private TextView mUserProfileCallStateText;
     private BackgroundImageView mBackgroundImage;
 
     public static InCallFragment newInstance() {
@@ -79,23 +78,19 @@ public class InCallFragment extends Fragment implements
         mBackgroundImage = fragmentView.findViewById(R.id.background_image);
         mDialpadFragment = DialpadFragment.newInCallDialpad();
 
-        getChildFragmentManager().beginTransaction()
-                .replace(R.id.dialpad_container, mDialpadFragment)
-                .commit();
-
         InCallViewModel inCallViewModel = ViewModelProviders.of(getActivity()).get(
                 InCallViewModel.class);
 
         inCallViewModel.getPrimaryCallDetail().observe(this, this::bindUserProfileView);
         inCallViewModel.getPrimaryCallState().observe(this, this::updateControllerBarFragment);
-        inCallViewModel.getCallStateAndConnectTime().observe(this, this::updateCallDescription);
+        inCallViewModel.getCallStateDescription().observe(this, this::updateState);
         return fragmentView;
     }
 
     @Override
     public void onOpenDialpad() {
         getChildFragmentManager().beginTransaction()
-                .attach(mDialpadFragment)
+                .replace(R.id.dialpad_container, mDialpadFragment)
                 .commit();
         mDialerFragmentContainer.setVisibility(View.VISIBLE);
         mUserProfileContainerView.setVisibility(View.GONE);
@@ -105,7 +100,7 @@ public class InCallFragment extends Fragment implements
     @Override
     public void onCloseDialpad() {
         getChildFragmentManager().beginTransaction()
-                .detach(mDialpadFragment)
+                .remove(mDialpadFragment)
                 .commit();
         mDialerFragmentContainer.setVisibility(View.GONE);
         mUserProfileContainerView.setVisibility(View.VISIBLE);
@@ -196,20 +191,9 @@ public class InCallFragment extends Fragment implements
         }
     }
 
-    private void updateCallDescription(@Nullable Pair<Integer, Long> callStateAndConnectTime) {
-        if (callStateAndConnectTime == null || callStateAndConnectTime.first == null) {
-            mUserProfileCallStateText.stop();
-            mUserProfileCallStateText.setText("");
-            return;
-        }
-        if (callStateAndConnectTime.first == Call.STATE_ACTIVE) {
-            mUserProfileCallStateText.setBase(callStateAndConnectTime.second
-                    - System.currentTimeMillis() + SystemClock.elapsedRealtime());
-            mUserProfileCallStateText.start();
-        } else {
-            mUserProfileCallStateText.stop();
-            mUserProfileCallStateText.setText(
-                    TelecomUtils.callStateToUiString(getContext(), callStateAndConnectTime.first));
-        }
+    private void updateState(String text) {
+        L.i(TAG, "updateState: %s", text);
+        mUserProfileCallStateText.setText(text);
+        mUserProfileCallStateText.setVisibility(TextUtils.isEmpty(text) ? View.GONE : View.VISIBLE);
     }
 }

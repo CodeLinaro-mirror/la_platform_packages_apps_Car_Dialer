@@ -19,22 +19,23 @@ package com.android.car.dialer.ui.activecall;
 import android.app.Application;
 import android.content.Context;
 import android.telecom.Call;
+import android.text.format.DateUtils;
 
 import androidx.annotation.NonNull;
-import androidx.core.util.Pair;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 
-import com.android.car.arch.common.LiveDataFunctions;
-import com.android.car.dialer.livedata.AudioRouteLiveData;
 import com.android.car.dialer.livedata.CallDetailLiveData;
 import com.android.car.dialer.livedata.CallStateLiveData;
+import com.android.car.dialer.livedata.HeartBeatLiveData;
 import com.android.car.dialer.log.L;
 import com.android.car.dialer.telecom.InCallServiceImpl;
 import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.telephony.common.CallDetail;
+import com.android.car.telephony.common.TelecomUtils;
 
 import com.google.common.collect.Lists;
 
@@ -55,10 +56,8 @@ public class InCallViewModel extends AndroidViewModel implements
 
     private LiveData<CallDetail> mCallDetailLiveData;
     private LiveData<Integer> mCallStateLiveData;
+    private LiveData<String> mCallStateDescriptionLiveData;
     private LiveData<Call> mPrimaryCallLiveData;
-    private LiveData<Integer> mAudioRouteLiveData;
-    private LiveData<Long> mCallConnectTimeLiveData;
-    private LiveData<Pair<Integer, Long>> mCallStateAndConnectTimeLiveData;
     private Context mContext;
 
     public InCallViewModel(@NonNull Application application) {
@@ -73,16 +72,9 @@ public class InCallViewModel extends AndroidViewModel implements
                 input -> input != null ? new CallDetailLiveData(input) : null);
         mCallStateLiveData = Transformations.switchMap(mPrimaryCallLiveData,
                 input -> input != null ? new CallStateLiveData(input) : null);
-        mCallConnectTimeLiveData = Transformations.map(mCallDetailLiveData, (details) -> {
-            if (details == null) {
-                return 0L;
-            }
-            return details.getConnectTimeMillis();
-        });
-        mCallStateAndConnectTimeLiveData =
-                LiveDataFunctions.pair(mCallStateLiveData, mCallConnectTimeLiveData);
-
-        mAudioRouteLiveData = new AudioRouteLiveData(mContext);
+        mCallStateDescriptionLiveData = new SelfRefreshDescriptionLiveData(mContext,
+                new HeartBeatLiveData(DateUtils.SECOND_IN_MILLIS), mCallDetailLiveData,
+                mCallStateLiveData);
 
         updateActiveCallList();
         UiCallManager.get().registerActiveCallListChangedCallback(this);
@@ -108,13 +100,6 @@ public class InCallViewModel extends AndroidViewModel implements
     }
 
     /**
-     * Returns the live data which monitors the primary call state and the start time of the call.
-     */
-    public LiveData<Pair<Integer, Long>> getCallStateAndConnectTime() {
-        return mCallStateAndConnectTimeLiveData;
-    }
-
-    /**
      * Returns the live data which monitor the primary call.
      */
     public LiveData<Call> getPrimaryCall() {
@@ -122,10 +107,16 @@ public class InCallViewModel extends AndroidViewModel implements
     }
 
     /**
-     * Returns current audio route.
+     * Returns the live data which represents a verbose description of the primary call. Example
+     * return values include:
+     * <ul>
+     * <li> "Work · Connecting"
+     * <li> "Main · 02:03"
+     * <li> "Bluetooth disconnected"
+     * </ul>
      */
-    public LiveData<Integer> getAudioRoute() {
-        return mAudioRouteLiveData;
+    public LiveData<String> getCallStateDescription() {
+        return mCallStateDescriptionLiveData;
     }
 
     @Override
@@ -184,6 +175,46 @@ public class InCallViewModel extends AndroidViewModel implements
             int otherCarCallRank = CALL_STATE_RANK.indexOf(otherCall.getState());
 
             return otherCarCallRank - carCallRank;
+        }
+    }
+
+    private static class SelfRefreshDescriptionLiveData extends MediatorLiveData<String> {
+
+        private final LiveData<CallDetail> mCallDetailLiveData;
+        private final LiveData<Integer> mCallStateLiveData;
+        private final Context mContext;
+
+        SelfRefreshDescriptionLiveData(Context context,
+                HeartBeatLiveData heartBeatLiveData,
+                LiveData<CallDetail> callDetailLiveData,
+                LiveData<Integer> callStateLiveData) {
+            mContext = context;
+            mCallDetailLiveData = callDetailLiveData;
+            mCallStateLiveData = callStateLiveData;
+
+            addSource(mCallStateLiveData, (trigger) -> updateDescription());
+            addSource(heartBeatLiveData, (trigger) -> updateDescription());
+        }
+
+        private void updateDescription() {
+            CallDetail callDetail = mCallDetailLiveData.getValue();
+            Integer callState = mCallStateLiveData.getValue();
+            if (callDetail != null && callState != null) {
+                String newDescription;
+                if (callState == Call.STATE_ACTIVE) {
+                    long duration = callDetail.getConnectTimeMillis() > 0 ? System.currentTimeMillis()
+                            - callDetail.getConnectTimeMillis() : 0;
+                    newDescription = DateUtils.formatElapsedTime(duration / 1000);
+                } else {
+                    newDescription = TelecomUtils.callStateToUiString(mContext, callState);
+                }
+                String oldDescription = getValue();
+                if (!newDescription.equals(oldDescription)) {
+                    setValue(newDescription);
+                }
+            } else {
+                setValue("");
+            }
         }
     }
 }
