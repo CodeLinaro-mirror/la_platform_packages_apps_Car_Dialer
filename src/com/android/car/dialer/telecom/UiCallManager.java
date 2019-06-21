@@ -29,6 +29,7 @@ import android.os.IBinder;
 import android.telecom.Call;
 import android.telecom.CallAudioState;
 import android.telecom.CallAudioState.CallAudioRoute;
+import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.text.TextUtils;
@@ -220,11 +221,29 @@ public class UiCallManager {
         }
     }
 
+    /**
+     * Returns the current audio route.
+     * The available routes are defined in {@link CallAudioState}.
+     */
     public int getAudioRoute() {
-        CallAudioState audioState = getCallAudioStateOrNull();
-        int audioRoute = audioState != null ? audioState.getRoute() : 0;
-        L.d(TAG, "getAudioRoute " + audioRoute);
-        return audioRoute;
+        if (isBluetoothCall()
+                && mBluetoothHeadsetClient != null
+                && !mBluetoothHeadsetClient.getConnectedDevices().isEmpty()) {
+            // TODO: Make this handle multiple devices
+            BluetoothDevice device = mBluetoothHeadsetClient.getConnectedDevices().get(0);
+            int audioState = mBluetoothHeadsetClient.getAudioState(device);
+
+            if (audioState == BluetoothHeadsetClient.STATE_AUDIO_CONNECTED) {
+                return CallAudioState.ROUTE_BLUETOOTH;
+            } else {
+                return CallAudioState.ROUTE_EARPIECE;
+            }
+        } else {
+            CallAudioState audioState = getCallAudioStateOrNull();
+            int audioRoute = audioState != null ? audioState.getRoute() : 0;
+            L.d(TAG, "getAudioRoute " + audioRoute);
+            return audioRoute;
+        }
     }
 
     /**
@@ -301,6 +320,22 @@ public class UiCallManager {
         }
         placeCall(voicemailNumber);
     }
+
+    /** Check if emergency call is supported by any phone account. */
+    public boolean isEmergencyCallSupported() {
+        List<PhoneAccountHandle> phoneAccountHandleList =
+                mTelecomManager.getCallCapablePhoneAccounts();
+        for (PhoneAccountHandle phoneAccountHandle : phoneAccountHandleList) {
+            PhoneAccount phoneAccount = mTelecomManager.getPhoneAccount(phoneAccountHandle);
+            L.d(TAG, "phoneAccount: %s", phoneAccount);
+            if (phoneAccount != null && phoneAccount.hasCapabilities(
+                    PhoneAccount.CAPABILITY_PLACE_EMERGENCY_CALLS)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     /** Return the current active call list from delegated {@link InCallServiceImpl} */
     public List<Call> getCallList() {
