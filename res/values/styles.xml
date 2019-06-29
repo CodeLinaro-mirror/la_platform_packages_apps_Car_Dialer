@@ -14,14 +14,12 @@
      limitations under the License.
 -->
 <resources xmlns:android="http://schemas.android.com/apk/res/android">
-    <style name="DialNumber">
-        <item name="android:textAppearance">?android:attr/textAppearanceLarge</item>
-        <item name="android:textSize">@dimen/car_key1_size</item>
-    </style>
-
-    <style name="EmergencyDialNumber" parent="DialNumber">
+    <!-- Dialpad -->
+    <style name="TextAppearance.DialNumber" parent="@style/TextAppearance.Display3"/>
+    <style name="TextAppearance.EmergencyDialNumber" parent="@style/TextAppearance.DialNumber">
         <item name="android:textColor">@color/emergency_text_color</item>
     </style>
+    <style name="TextAppearance.DialpadDisplayName" parent="@style/TextAppearance.Body1"/>
 
     <style name="KeypadNumber">
         <item name="android:textAppearance">?android:attr/textAppearanceLarge</item>
@@ -116,16 +114,14 @@
     <style name="TextAppearance.InCallUserPhoneNumber" parent="@style/TextAppearance.Body1">
         <item name="android:textColor">#B8FFFFFF</item>
     </style>
-    <style name="InCallState">
-        <item name="android:textAppearance">@style/TextAppearance.Body1</item>
+    <style name="TextAppearance.InCallState" parent="@style/TextAppearance.Body1">
         <item name="android:textColor">#B8FFFFFF</item>
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:singleLine">true</item>
     </style>
 
     <!-- Contact details -->
     <style name="TextAppearance.ContactDetailsTitle" parent="@style/TextAppearance.Display2"/>
+
+    <style name="TextAppearance.ContactResultTitle" parent="@style/TextAppearance.Body1"/>
 
     <style name="hero_button">
         <item name="android:layout_width">wrap_content</item>
