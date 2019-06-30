@@ -33,7 +33,6 @@ import com.android.car.dialer.TestDialerApplication;
 import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.dialer.testutils.ShadowCallLogCalls;
 import com.android.car.dialer.testutils.ShadowInMemoryPhoneBook;
-import com.android.car.dialer.ui.activecall.InCallFragment;
 import com.android.car.telephony.common.Contact;
 import com.android.car.telephony.common.InMemoryPhoneBook;
 import com.android.car.telephony.common.TelecomUtils;
@@ -129,14 +128,6 @@ public class DialpadFragmentTest {
     }
 
     @Test
-    public void testOnCreateView_modeInCall() {
-        startInCallActivity();
-
-        verifyButtonVisibility(View.GONE, View.GONE);
-        verifyTitleText("");
-    }
-
-    @Test
     public void testDeleteButton_normalString() {
         mDialpadFragment = DialpadFragment.newPlaceCallDialpad();
         startPlaceCallActivity();
@@ -226,16 +217,6 @@ public class DialpadFragmentTest {
         fragmentTestActivity.setFragment(mDialpadFragment);
     }
 
-    private void startInCallActivity() {
-        mDialpadFragment = DialpadFragment.newInCallDialpad();
-        InCallFragment inCallFragment = InCallFragment.newInstance();
-        FragmentTestActivity fragmentTestActivity = Robolectric.buildActivity(
-                FragmentTestActivity.class).create().start().resume().get();
-        fragmentTestActivity.setFragment(inCallFragment);
-        inCallFragment.getChildFragmentManager().beginTransaction().replace(R.id.dialpad_container,
-                mDialpadFragment).commit();
-    }
-
     private void verifyButtonVisibility(int callButtonVisibility, int deleteButtonVisibility) {
         View callButton = mDialpadFragment.getView().findViewById(R.id.call_button);
         ImageButton deleteButton = mDialpadFragment.getView().findViewById(R.id.delete_button);
@@ -248,6 +229,6 @@ public class DialpadFragmentTest {
         expectedText = TelecomUtils.getFormattedNumber(mDialpadFragment.getContext(), expectedText);
         TextView mTitleView = mDialpadFragment.getView().findViewById(R.id.title);
         TelecomUtils.getFormattedNumber(mDialpadFragment.getContext(), null);
-        assertThat(mTitleView.getText()).isEqualTo(expectedText);
+        assertThat(mTitleView.getText().toString()).isEqualTo(expectedText);
     }
 }
