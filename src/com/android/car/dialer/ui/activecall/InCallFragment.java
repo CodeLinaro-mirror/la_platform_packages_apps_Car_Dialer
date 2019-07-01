@@ -20,25 +20,26 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.telecom.Call;
-import android.text.TextUtils;
-import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Chronometer;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.util.Pair;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModelProviders;
 
 import com.android.car.apps.common.BackgroundImageView;
 import com.android.car.apps.common.LetterTileDrawable;
 import com.android.car.dialer.R;
 import com.android.car.dialer.log.L;
-import com.android.car.dialer.ui.dialpad.DialpadFragment;
 import com.android.car.dialer.ui.view.ContactAvatarOutputlineProvider;
 import com.android.car.telephony.common.CallDetail;
 import com.android.car.telephony.common.TelecomUtils;
@@ -47,21 +48,21 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.SimpleTarget;
 import com.bumptech.glide.request.transition.Transition;
+import com.google.common.annotations.VisibleForTesting;
 
 /**
  * A fragment that displays information about an on-going call with options to hang up.
  */
-public class InCallFragment extends Fragment implements
-        OnGoingCallControllerBarFragment.OnGoingCallControllerBarCallback {
+public class InCallFragment extends Fragment {
     private static final String TAG = "CD.InCallFragment";
     private static final String TAG_CALL_RINGING = "CallStateRinging";
     private static final String TAG_CALL_OTHER = "CallStateOther";
 
     private Fragment mDialpadFragment;
     private View mUserProfileContainerView;
-    private View mDialerFragmentContainer;
-    private TextView mUserProfileCallStateText;
+    private Chronometer mUserProfileCallStateText;
     private BackgroundImageView mBackgroundImage;
+    private MutableLiveData<Boolean> mDialpadState;
 
     public static InCallFragment newInstance() {
         return new InCallFragment();
@@ -72,37 +73,46 @@ public class InCallFragment extends Fragment implements
             @Nullable Bundle savedInstanceState) {
         View fragmentView = inflater.inflate(R.layout.in_call_fragment, container, false);
         mUserProfileContainerView = fragmentView.findViewById(R.id.user_profile_container);
-        mDialerFragmentContainer = fragmentView.findViewById(R.id.dialpad_container);
         mUserProfileCallStateText
                 = mUserProfileContainerView.findViewById(R.id.user_profile_call_state);
         mBackgroundImage = fragmentView.findViewById(R.id.background_image);
-        mDialpadFragment = DialpadFragment.newInCallDialpad();
+        mDialpadFragment = getChildFragmentManager().findFragmentById(R.id.incall_dialpad_fragment);
 
         InCallViewModel inCallViewModel = ViewModelProviders.of(getActivity()).get(
                 InCallViewModel.class);
 
         inCallViewModel.getPrimaryCallDetail().observe(this, this::bindUserProfileView);
         inCallViewModel.getPrimaryCallState().observe(this, this::updateControllerBarFragment);
-        inCallViewModel.getCallStateDescription().observe(this, this::updateState);
+        inCallViewModel.getCallStateAndConnectTime().observe(this, this::updateCallDescription);
+
+        OngoingCallStateViewModel ongoingCallStateViewModel = ViewModelProviders.of(
+                getActivity()).get(OngoingCallStateViewModel.class);
+        mDialpadState = ongoingCallStateViewModel.getDialpadState();
+        mDialpadState.setValue(savedInstanceState == null ? false : !mDialpadFragment.isHidden());
+        mDialpadState.observe(this, isDialpadOpen -> {
+            if (isDialpadOpen) {
+                onOpenDialpad();
+            } else {
+                onCloseDialpad();
+            }
+        });
         return fragmentView;
     }
 
-    @Override
-    public void onOpenDialpad() {
+    @VisibleForTesting
+    void onOpenDialpad() {
         getChildFragmentManager().beginTransaction()
-                .replace(R.id.dialpad_container, mDialpadFragment)
+                .show(mDialpadFragment)
                 .commit();
-        mDialerFragmentContainer.setVisibility(View.VISIBLE);
         mUserProfileContainerView.setVisibility(View.GONE);
         mBackgroundImage.setDimmed(true);
     }
 
-    @Override
-    public void onCloseDialpad() {
+    @VisibleForTesting
+    void onCloseDialpad() {
         getChildFragmentManager().beginTransaction()
-                .remove(mDialpadFragment)
+                .hide(mDialpadFragment)
                 .commit();
-        mDialerFragmentContainer.setVisibility(View.GONE);
         mUserProfileContainerView.setVisibility(View.VISIBLE);
         mBackgroundImage.setDimmed(false);
     }
@@ -121,14 +131,14 @@ public class InCallFragment extends Fragment implements
         nameView.setText(displayNameAndAvatarUri.first);
 
         String phoneNumberLabel = TelecomUtils.getTypeFromNumber(getContext(), number).toString();
-        if(!phoneNumberLabel.isEmpty()) {
+        if (!phoneNumberLabel.isEmpty()) {
             phoneNumberLabel += " ";
         }
         phoneNumberLabel += TelecomUtils.getFormattedNumber(getContext(), number);
 
         TextView phoneNumberView
                 = mUserProfileContainerView.findViewById(R.id.user_profile_phone_number);
-        if(!phoneNumberLabel.equals(displayNameAndAvatarUri.first)) {
+        if (!phoneNumberLabel.equals(displayNameAndAvatarUri.first)) {
             phoneNumberView.setText(phoneNumberLabel);
             phoneNumberView.setVisibility(View.VISIBLE);
         } else {
@@ -175,6 +185,7 @@ public class InCallFragment extends Fragment implements
             getChildFragmentManager().beginTransaction()
                     .replace(R.id.controller_bar_container, controllerBarFragment, TAG_CALL_RINGING)
                     .commit();
+            mDialpadState.setValue(false);
             return;
         }
         Fragment controllerBarFragment = getChildFragmentManager().findFragmentByTag(
@@ -191,9 +202,20 @@ public class InCallFragment extends Fragment implements
         }
     }
 
-    private void updateState(String text) {
-        L.i(TAG, "updateState: %s", text);
-        mUserProfileCallStateText.setText(text);
-        mUserProfileCallStateText.setVisibility(TextUtils.isEmpty(text) ? View.GONE : View.VISIBLE);
+    private void updateCallDescription(@Nullable Pair<Integer, Long> callStateAndConnectTime) {
+        if (callStateAndConnectTime == null || callStateAndConnectTime.first == null) {
+            mUserProfileCallStateText.stop();
+            mUserProfileCallStateText.setText("");
+            return;
+        }
+        if (callStateAndConnectTime.first == Call.STATE_ACTIVE) {
+            mUserProfileCallStateText.setBase(callStateAndConnectTime.second
+                    - System.currentTimeMillis() + SystemClock.elapsedRealtime());
+            mUserProfileCallStateText.start();
+        } else {
+            mUserProfileCallStateText.stop();
+            mUserProfileCallStateText.setText(
+                    TelecomUtils.callStateToUiString(getContext(), callStateAndConnectTime.first));
+        }
     }
 }
