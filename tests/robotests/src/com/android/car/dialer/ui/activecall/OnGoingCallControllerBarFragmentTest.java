@@ -33,7 +33,11 @@ import android.telecom.TelecomManager;
 import android.view.View;
 import android.widget.ImageView;
 
+import androidx.core.util.Pair;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
 
 import com.android.car.dialer.CarDialerRobolectricTestRunner;
 import com.android.car.dialer.FragmentTestActivity;
@@ -126,21 +130,24 @@ public class OnGoingCallControllerBarFragmentTest {
 
         View dialpadButton = mOnGoingCallControllerBarFragment.getView().findViewById(
                 R.id.toggle_dialpad_button);
-        View dialerFragmentContainer =
-                mOnGoingCallControllerBarFragment.getParentFragment().getView().findViewById(
-                        R.id.dialpad_container);
+        FragmentManager fragmentManager =
+                mOnGoingCallControllerBarFragment.getParentFragment().getChildFragmentManager();
+        Fragment dialpadFragment = fragmentManager.findFragmentById(R.id.incall_dialpad_fragment);
+
         // Test initial state
         assertThat(dialpadButton.hasOnClickListeners()).isTrue();
         assertThat(dialpadButton.isActivated()).isFalse();
-        assertThat(dialerFragmentContainer.getVisibility()).isEqualTo(View.GONE);
+        assertThat(dialpadFragment.isHidden()).isTrue();
         // On open dialpad
         dialpadButton.performClick();
         assertThat(dialpadButton.isActivated()).isTrue();
-        assertThat(dialerFragmentContainer.getVisibility()).isEqualTo(View.VISIBLE);
+        fragmentManager.executePendingTransactions();
+        assertThat(dialpadFragment.isHidden()).isFalse();
         // On close dialpad
         dialpadButton.performClick();
         assertThat(dialpadButton.isActivated()).isFalse();
-        assertThat(dialerFragmentContainer.getVisibility()).isEqualTo(View.GONE);
+        fragmentManager.executePendingTransactions();
+        assertThat(dialpadFragment.isHidden()).isTrue();
     }
 
     @Test
@@ -212,9 +219,20 @@ public class OnGoingCallControllerBarFragmentTest {
         when(callLiveData.getValue()).thenReturn(mMockCall);
         when(mMockInCallViewModel.getPrimaryCall()).thenReturn(callLiveData);
         when(mMockInCallViewModel.getPrimaryCallDetail()).thenReturn(mock(LiveData.class));
-        when(mMockInCallViewModel.getCallStateDescription()).thenReturn(mock(LiveData.class));
         when(mMockInCallViewModel.getPrimaryCallState()).thenReturn(mock(LiveData.class));
+
+        MutableLiveData<Integer> audioRouteLiveData = new MutableLiveData<>();
+        audioRouteLiveData.setValue(CallAudioState.ROUTE_BLUETOOTH);
+        when(mMockInCallViewModel.getAudioRoute()).thenReturn(audioRouteLiveData);
+
+        LiveData<Pair<Integer, Long>> stateAndConnectTimeLiveData = mock(LiveData.class);
+        when(mMockInCallViewModel.getCallStateAndConnectTime())
+                .thenReturn(stateAndConnectTimeLiveData);
+
         ShadowAndroidViewModelFactory.add(InCallViewModel.class, mMockInCallViewModel);
+        ShadowAndroidViewModelFactory.add(
+                OngoingCallStateViewModel.class,
+                new OngoingCallStateViewModel(RuntimeEnvironment.application));
 
         FragmentTestActivity fragmentTestActivity = Robolectric.buildActivity(
                 FragmentTestActivity.class).create().start().resume().get();

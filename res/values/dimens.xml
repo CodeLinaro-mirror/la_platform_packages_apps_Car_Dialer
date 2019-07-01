@@ -58,11 +58,9 @@
     <dimen name="contact_list_text_margin_end">@dimen/list_item_text_margin_end</dimen>
 
     <!-- Contact result dimensions -->
-    <dimen name="contact_result_card_height">@dimen/list_item_height</dimen>
-    <dimen name="contact_result_card_corner_radius">@*android:dimen/car_radius_3</dimen>
-    <dimen name="contact_result_image_size">@*android:dimen/car_keyline_2</dimen>
-    <dimen name="contact_result_name_margin">@*android:dimen/car_keyline_2</dimen>
-    <dimen name="contact_result_list_margin">@*android:dimen/car_keyline_2</dimen>
+    <dimen name="contact_result_height">@dimen/list_item_height</dimen>
+    <dimen name="contact_result_avatar_margin">@dimen/list_item_padding</dimen>
+    <dimen name="contact_result_name_margin">@dimen/list_item_guideline_begin</dimen>
 
     <!-- In-call dimensions -->
     <dimen name="in_call_controller_bar_height">@dimen/control_bar_height</dimen>
@@ -91,14 +89,11 @@
     <dimen name="dialpad_fragment_info_padding_size">@*android:dimen/car_keyline_1</dimen>
     <dimen name="dialpad_info_title_padding_size">@*android:dimen/car_padding_4</dimen>
     <dimen name="dialpad_info_edge_padding_size">@*android:dimen/car_padding_2</dimen>
-    <dimen name="dialpad_info_number_view_padding">32dp</dimen>
-    <dimen name="dialpad_info_delete_button_margin">96dp</dimen>
     <dimen name="dialpad_fragment_margin">@*android:dimen/car_margin</dimen>
     <dimen name="dialpad_info_guideline">@dimen/touch_target_size</dimen>
-    <dimen name="dialpad_info_title_text_size_max">36sp</dimen>
-    <dimen name="dialpad_info_title_text_size_min">24sp</dimen>
-    <dimen name="dialpad_display_name_size">32sp</dimen>
+    <dimen name="dialpad_info_guideline_in_call" format="float">0.5</dimen>
     <dimen name="display_name_padding">@*android:dimen/car_padding_3</dimen>
+    <dimen name="call_state_padding">@*android:dimen/car_padding_3</dimen>
 
     <!-- Keypad dimensions -->
     <dimen name="keypad_minimum_size">@dimen/touch_target_size</dimen>
@@ -146,7 +141,6 @@
     <dimen name="list_top_padding">@*android:dimen/car_padding_2</dimen>
     <!-- Components -->
     <dimen name="list_item_height">@*android:dimen/car_single_line_list_item_height</dimen>
-    <dimen name="list_margin">@*android:dimen/car_margin</dimen>
     <dimen name="list_item_guideline">@*android:dimen/car_keyline_3</dimen>
     <dimen name="list_item_guideline_begin">@*android:dimen/car_keyline_4</dimen>
     <dimen name="list_item_guideline_end">@*android:dimen/car_keyline_3</dimen>
