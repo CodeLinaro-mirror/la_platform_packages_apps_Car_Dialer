@@ -15,11 +15,11 @@
   limitations under the License.
   -->
 
-<resources>
-    <!-- Card view margins-->
-    <dimen name="dialer_card_margin_x">326dp</dimen>
-
-    <!-- Toolbar -->
-    <!-- Half of the difference between car_margin and touch_target_size-->
-    <dimen name="menu_item_margin_x">36dp</dimen>
-</resources>
+<animator
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="@integer/config_dial_motion_duration"
+    android:interpolator="@android:interpolator/fast_out_slow_in">
+    <propertyValuesHolder
+        android:valueFrom="@integer/config_dial_motion_scale_start"
+        android:valueTo="1"/>
+</animator>

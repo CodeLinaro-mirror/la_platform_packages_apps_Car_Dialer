@@ -66,6 +66,7 @@ public class DialpadFragmentTest {
         MockitoAnnotations.initMocks(this);
 
         Context context = RuntimeEnvironment.application;
+        ((TestDialerApplication) context).setupInCallServiceImpl();
         ((TestDialerApplication) context).initUiCallManager();
         InMemoryPhoneBook.init(context);
     }
@@ -192,7 +193,7 @@ public class DialpadFragmentTest {
         startPlaceCallActivity();
         mDialpadFragment.setDialedNumber(DIAL_NUMBER);
 
-        mDialpadFragment.onKeyLongPressed(KeyEvent.KEYCODE_0);
+        mDialpadFragment.onKeypadKeyLongPressed(KeyEvent.KEYCODE_0);
         verifyTitleText(DIAL_NUMBER.substring(0, DIAL_NUMBER.length() - 1) + "+");
     }
 
@@ -229,6 +230,6 @@ public class DialpadFragmentTest {
         expectedText = TelecomUtils.getFormattedNumber(mDialpadFragment.getContext(), expectedText);
         TextView mTitleView = mDialpadFragment.getView().findViewById(R.id.title);
         TelecomUtils.getFormattedNumber(mDialpadFragment.getContext(), null);
-        assertThat(mTitleView.getText()).isEqualTo(expectedText);
+        assertThat(mTitleView.getText().toString()).isEqualTo(expectedText);
     }
 }

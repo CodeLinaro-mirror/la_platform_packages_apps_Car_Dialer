@@ -45,8 +45,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 
 /** Fragment that controls the dialpad. */
-public class DialpadFragment extends AbstractDialpadFragment implements
-        KeypadFragment.KeypadCallback {
+public class DialpadFragment extends AbstractDialpadFragment {
     private static final String TAG = "CD.DialpadFragment";
 
     private static final String DIALPAD_MODE_KEY = "DIALPAD_MODE_KEY";
@@ -121,7 +120,8 @@ public class DialpadFragment extends AbstractDialpadFragment implements
 
         mTitleView = rootView.findViewById(R.id.title);
         mTitleView.setTextAppearance(
-                mMode == MODE_EMERGENCY ? R.style.EmergencyDialNumber : R.style.DialNumber);
+                mMode == MODE_EMERGENCY ? R.style.TextAppearance_EmergencyDialNumber
+                        : R.style.TextAppearance_DialNumber);
         mDisplayName = rootView.findViewById(R.id.display_name);
 
         View callButton = rootView.findViewById(R.id.call_button);
@@ -132,6 +132,20 @@ public class DialpadFragment extends AbstractDialpadFragment implements
                 getNumber().setLength(0);
             } else {
                 setDialedNumber(CallLog.Calls.getLastOutgoingCall(getContext()));
+            }
+        });
+
+        callButton.addOnUnhandledKeyEventListener((v, event) -> {
+            if (event.getKeyCode() == KeyEvent.KEYCODE_CALL) {
+                // Use onKeyDown/Up instead of performClick() because it animates the ripple
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    callButton.onKeyDown(KeyEvent.KEYCODE_ENTER, event);
+                } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                    callButton.onKeyUp(KeyEvent.KEYCODE_ENTER, event);
+                }
+                return true;
+            } else {
+                return false;
             }
         });
 
@@ -156,7 +170,7 @@ public class DialpadFragment extends AbstractDialpadFragment implements
     }
 
     @Override
-    public void onKeyLongPressed(@KeypadFragment.DialKeyCode int keycode) {
+    public void onKeypadKeyLongPressed(@KeypadFragment.DialKeyCode int keycode) {
         switch (keycode) {
             case KeyEvent.KEYCODE_0:
                 removeLastDigit();
@@ -181,7 +195,7 @@ public class DialpadFragment extends AbstractDialpadFragment implements
     }
 
     @Override
-    void stopTone() {
+    void stopAllTones() {
         L.d(TAG, "stop key pressed tone");
         mToneGenerator.stopTone();
     }
@@ -199,11 +213,10 @@ public class DialpadFragment extends AbstractDialpadFragment implements
                             : R.string.emergency_call_description);
             ViewUtils.setVisible(mDeleteButton, false);
         } else {
-            mTitleView.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            mTitleView.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
             if (number.length() <= MAX_DIAL_NUMBER) {
                 mTitleView.setText(
                         TelecomUtils.getFormattedNumber(getContext(), number.toString()));
-
             } else {
                 mTitleView.setText(number.substring(number.length() - MAX_DIAL_NUMBER));
             }
