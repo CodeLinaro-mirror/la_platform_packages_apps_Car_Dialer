@@ -16,16 +16,26 @@
 
 package com.android.car.dialer.ui.dialpad;
 
+import android.animation.AnimatorInflater;
+import android.animation.ValueAnimator;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.SpannableString;
+import android.text.Spanned;
 import android.text.TextUtils;
 import android.util.SparseArray;
 import android.view.KeyEvent;
+import android.view.View;
+import android.widget.TextView;
 
+import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
+import com.android.car.dialer.R;
 import com.android.car.dialer.log.L;
 import com.android.car.dialer.ui.common.DialerBaseFragment;
+import com.android.car.dialer.ui.view.ScaleSpan;
 
 /** Fragment that controls the dialpad. */
 public abstract class AbstractDialpadFragment extends DialerBaseFragment implements
@@ -53,15 +63,19 @@ public abstract class AbstractDialpadFragment extends DialerBaseFragment impleme
 
     private boolean mDTMFToneEnabled;
     private final StringBuffer mNumber = new StringBuffer();
+    private ValueAnimator mInputMotionAnimator;
+    private ScaleSpan mScaleSpan;
+    private TextView mTitleView;
+    private int mCurrentlyPlayingTone = KeyEvent.KEYCODE_UNKNOWN;
 
     /** Defines how the dialed number should be presented. */
     abstract void presentDialedNumber(@NonNull StringBuffer number);
 
-    /** Plays the tone for the pressed keycode when DTMF tone enabled in settings. */
+    /** Plays the tone for the pressed keycode when "play DTMF tone" is enabled in settings. */
     abstract void playTone(int keycode);
 
-    /** Stops playing the tone for the pressed keycode when DTMF tone enabled in settings. */
-    abstract void stopTone();
+    /** Stops playing all tones when "play DTMF tone" is enabled in settings. */
+    abstract void stopAllTones();
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -72,6 +86,19 @@ public abstract class AbstractDialpadFragment extends DialerBaseFragment impleme
         L.d(TAG, "onCreate, number: %s", mNumber);
     }
 
+    @CallSuper
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        mTitleView = view.findViewById(R.id.title);
+        if (mTitleView != null && getResources().getBoolean(R.bool.config_enable_dial_motion)) {
+            mInputMotionAnimator = (ValueAnimator) AnimatorInflater.loadAnimator(getContext(),
+                    R.animator.scale_down);
+            float startTextSize = mTitleView.getTextSize() * getResources().getFloat(
+                    R.integer.config_dial_motion_scale_start);
+            mScaleSpan = new ScaleSpan(startTextSize);
+        }
+    }
+
     @Override
     public void onResume() {
         super.onResume();
@@ -79,13 +106,13 @@ public abstract class AbstractDialpadFragment extends DialerBaseFragment impleme
                 Settings.System.DTMF_TONE_WHEN_DIALING, 1) == PLAY_DTMF_TONE;
         L.d(TAG, "DTMF tone enabled = %s", String.valueOf(mDTMFToneEnabled));
 
-        presentDialedNumber(mNumber);
+        presentDialedNumber();
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        stopTone();
+        stopAllTones();
     }
 
     @Override
@@ -95,23 +122,22 @@ public abstract class AbstractDialpadFragment extends DialerBaseFragment impleme
     }
 
     @Override
-    public void onKeyDown(@KeypadFragment.DialKeyCode int keycode) {
+    public void onKeypadKeyDown(@KeypadFragment.DialKeyCode int keycode) {
         String digit = sDialValueMap.get(keycode).toString();
         appendDialedNumber(digit);
 
-        if (!mDTMFToneEnabled) {
-            return;
+        if (mDTMFToneEnabled) {
+            mCurrentlyPlayingTone = keycode;
+            playTone(keycode);
         }
-
-        playTone(keycode);
     }
 
     @Override
-    public void onKeyUp(@KeypadFragment.DialKeyCode int keycode) {
-        if (!mDTMFToneEnabled) {
-            return;
+    public void onKeypadKeyUp(@KeypadFragment.DialKeyCode int keycode) {
+        if (mDTMFToneEnabled && keycode == mCurrentlyPlayingTone) {
+            mCurrentlyPlayingTone = KeyEvent.KEYCODE_UNKNOWN;
+            stopAllTones();
         }
-        stopTone();
     }
 
     /** Set the dialed number to the given number. Must be called after the fragment is added. */
@@ -120,23 +146,50 @@ public abstract class AbstractDialpadFragment extends DialerBaseFragment impleme
         if (!TextUtils.isEmpty(number)) {
             mNumber.append(number);
         }
-        presentDialedNumber(mNumber);
+        presentDialedNumber();
     }
 
     void clearDialedNumber() {
         mNumber.setLength(0);
-        presentDialedNumber(mNumber);
+        presentDialedNumber();
     }
 
     void removeLastDigit() {
         if (mNumber.length() != 0) {
             mNumber.deleteCharAt(mNumber.length() - 1);
         }
-        presentDialedNumber(mNumber);
+        presentDialedNumber();
     }
 
     void appendDialedNumber(String number) {
         mNumber.append(number);
+        presentDialedNumber();
+
+        if (TextUtils.isEmpty(number)) {
+            return;
+        }
+
+        if (mInputMotionAnimator != null) {
+            final String currentText = mTitleView.getText().toString();
+            final SpannableString spannableString = new SpannableString(currentText);
+            mInputMotionAnimator.addUpdateListener(valueAnimator -> {
+                float textSize =
+                        (float) valueAnimator.getAnimatedValue() * mTitleView.getTextSize();
+                mScaleSpan.setTextSize(textSize);
+                spannableString.setSpan(mScaleSpan, currentText.length() - number.length(),
+                        currentText.length(), Spanned.SPAN_INCLUSIVE_EXCLUSIVE);
+                mTitleView.setText(spannableString, TextView.BufferType.SPANNABLE);
+            });
+            mInputMotionAnimator.start();
+        }
+    }
+
+    private void presentDialedNumber() {
+        if (mInputMotionAnimator != null) {
+            mInputMotionAnimator.cancel();
+            mInputMotionAnimator.removeAllUpdateListeners();
+        }
+
         presentDialedNumber(mNumber);
     }
 
