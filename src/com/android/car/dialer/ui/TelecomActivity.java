@@ -21,6 +21,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.telecom.Call;
 import android.telephony.PhoneNumberUtils;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -39,10 +40,13 @@ import androidx.preference.PreferenceManager;
 
 import com.android.car.apps.common.util.Themes;
 import com.android.car.apps.common.widget.CarTabLayout;
+import com.android.car.dialer.Constants;
 import com.android.car.dialer.R;
 import com.android.car.dialer.log.L;
+import com.android.car.dialer.notification.NotificationService;
 import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.dialer.ui.activecall.InCallActivity;
+import com.android.car.dialer.ui.activecall.InCallViewModel;
 import com.android.car.dialer.ui.calllog.CallHistoryFragment;
 import com.android.car.dialer.ui.common.DialerBaseFragment;
 import com.android.car.dialer.ui.contact.ContactListFragment;
@@ -51,6 +55,8 @@ import com.android.car.dialer.ui.favorite.FavoriteFragment;
 import com.android.car.dialer.ui.search.ContactResultsFragment;
 import com.android.car.dialer.ui.settings.DialerSettingsActivity;
 import com.android.car.dialer.ui.warning.NoHfpFragment;
+
+import java.util.List;
 
 /**
  * Main activity for the Dialer app. It contains two layers:
@@ -69,6 +75,7 @@ public class TelecomActivity extends FragmentActivity implements
 
     private LiveData<String> mBluetoothErrorMsgLiveData;
     private LiveData<Integer> mDialerAppStateLiveData;
+    private LiveData<List<Call>> mOngoingCallListLiveData;
 
     // View objects for this activity.
     private CarTabLayout<TelecomPageTab> mTabLayout;
@@ -97,6 +104,11 @@ public class TelecomActivity extends FragmentActivity implements
         mDialerAppStateLiveData.observe(this,
                 dialerAppState -> updateCurrentFragment(dialerAppState));
 
+        InCallViewModel inCallViewModel = ViewModelProviders.of(this).get(InCallViewModel.class);
+        mOngoingCallListLiveData = inCallViewModel.getOngoingCallList();
+        // The mOngoingCallListLiveData needs to be active to get calculated.
+        mOngoingCallListLiveData.observe(this, this::maybeStartInCallActivity);
+
         handleIntent();
     }
 
@@ -106,8 +118,6 @@ public class TelecomActivity extends FragmentActivity implements
         onBackStackChanged();
         super.onStart();
         L.d(TAG, "onStart");
-
-        maybeStartInCallActivity();
     }
 
     @Override
@@ -157,11 +167,24 @@ public class TelecomActivity extends FragmentActivity implements
                 navigateToContactResultsFragment(searchQuery);
                 break;
 
+            case Constants.Intents.ACTION_SHOW_PAGE:
+                if (TelecomActivityViewModel.DialerAppState.BLUETOOTH_ERROR
+                        != mDialerAppStateLiveData.getValue()) {
+                    showTabPage(intent.getStringExtra(Constants.Intents.EXTRA_SHOW_PAGE));
+                    if (intent.getBooleanExtra(Constants.Intents.EXTRA_ACTION_READ_MISSED, false)) {
+                        NotificationService.readAllMissedCall(this);
+                    }
+                }
+                break;
+
             default:
                 // Do nothing.
         }
 
         setIntent(null);
+
+        // This is to start the incall activity when user taps on the dialer launch icon rapidly
+        maybeStartInCallActivity(mOngoingCallListLiveData.getValue());
     }
 
     /**
@@ -273,9 +296,9 @@ public class TelecomActivity extends FragmentActivity implements
 
     /** Switch to {@link DialpadFragment} and set the given number as dialed number. */
     private void showDialPadFragment(String number) {
-        int dialpadTabIndex = mTabFactory.getTabIndex(TelecomPageTab.Page.DIAL_PAD);
+        int dialpadTabIndex = showTabPage(TelecomPageTab.Page.DIAL_PAD);
+
         if (dialpadTabIndex == -1) {
-            L.w(TAG, "Dialpad is not a tab.");
             return;
         }
 
@@ -286,8 +309,21 @@ public class TelecomActivity extends FragmentActivity implements
         } else {
             L.w(TAG, "Current tab is not a dialpad fragment!");
         }
+    }
 
-        mTabLayout.selectCarTab(dialpadTabIndex);
+    private int showTabPage(@TelecomPageTab.Page String tabPage) {
+        int tabIndex = mTabFactory.getTabIndex(tabPage);
+        if (tabIndex == -1) {
+            L.w(TAG, "Page %s is not a tab.", tabPage);
+            return -1;
+        }
+        getSupportFragmentManager().executePendingTransactions();
+        while (getSupportFragmentManager().getBackStackEntryCount() > 1) {
+            getSupportFragmentManager().popBackStackImmediate();
+        }
+
+        mTabLayout.selectCarTab(tabIndex);
+        return tabIndex;
     }
 
     private void setContentFragment(Fragment fragment, String fragmentTag) {
@@ -367,8 +403,8 @@ public class TelecomActivity extends FragmentActivity implements
         pushContentFragment(fragment, ContactResultsFragment.FRAGMENT_TAG);
     }
 
-    private void maybeStartInCallActivity() {
-        if (UiCallManager.get().getCallList().isEmpty()) {
+    private void maybeStartInCallActivity(List<Call> callList) {
+        if (callList == null || callList.isEmpty()) {
             return;
         }
 
