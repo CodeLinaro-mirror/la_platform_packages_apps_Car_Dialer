@@ -31,9 +31,20 @@
         <!-- This array is mapped to tabs_config. -->
         <!-- And it should be consistent with the mapping in the TelecomPageTab.Factory -->
         <!--Add favorite tab back when we have favorite functionality-->
-        <!--item>@string/favorites_title</item>-->
+        <!--<item>@string/favorites_title</item>-->
         <item>@string/call_history_title</item>
         <item>@string/contacts_title</item>
         <item>@string/dialpad_title</item>
+    </string-array>
+
+    <string-array name="contact_order_entry_values">
+        <item>given_name</item>
+        <item>family_name</item>
+    </string-array>
+
+    <string-array name="contact_order_entries">
+        <!-- This array is mapped to contact_order_keys. -->
+        <item>@string/give_name_first_title</item>
+        <item>@string/family_name_first_title</item>
     </string-array>
 </resources>

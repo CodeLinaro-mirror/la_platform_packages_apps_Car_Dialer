@@ -17,19 +17,24 @@
 package com.android.car.dialer;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Application;
 import android.app.NotificationManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.telecom.CallAudioState;
 
 import com.android.car.dialer.notification.InCallNotificationController;
+import com.android.car.dialer.notification.MissedCallNotificationController;
 import com.android.car.dialer.telecom.InCallServiceImpl;
 import com.android.car.dialer.telecom.UiCallManager;
 
 /** Robolectric runtime application for Dialer. Must be Test + application class name. */
 public class TestDialerApplication extends Application {
+
+    private InCallServiceImpl.LocalBinder mLocalBinder;
 
     @Override
     public void onCreate() {
@@ -37,19 +42,34 @@ public class TestDialerApplication extends Application {
         shadowOf(this).setSystemService(
                 Context.NOTIFICATION_SERVICE, mock(NotificationManager.class));
         InCallNotificationController.init(this);
+        MissedCallNotificationController.init(this);
+
+        mLocalBinder = mock(InCallServiceImpl.LocalBinder.class);
+        shadowOf(this).setComponentNameAndServiceForBindService(
+                new ComponentName(this, InCallServiceImpl.class), mLocalBinder);
     }
 
     public void initUiCallManager() {
-        shadowOf(this).setComponentNameAndServiceForBindService(
-                new ComponentName(this, InCallServiceImpl.class),
-                mock(InCallServiceImpl.LocalBinder.class));
         UiCallManager.init(this);
+    }
+
+    public void setupInCallServiceImpl() {
+        InCallServiceImpl inCallService = mock(InCallServiceImpl.class);
+        CallAudioState callAudioState = mock(CallAudioState.class);
+        when(callAudioState.getRoute()).thenReturn(CallAudioState.ROUTE_BLUETOOTH);
+        when(inCallService.getCallAudioState()).thenReturn(callAudioState);
+        when(mLocalBinder.getService()).thenReturn(inCallService);
+    }
+
+    public void setupInCallServiceImpl(InCallServiceImpl inCallServiceImpl) {
+        when(mLocalBinder.getService()).thenReturn(inCallServiceImpl);
     }
 
     @Override
     public void onTerminate() {
         super.onTerminate();
         InCallNotificationController.tearDown();
+        MissedCallNotificationController.get().tearDown();
     }
 
 }
