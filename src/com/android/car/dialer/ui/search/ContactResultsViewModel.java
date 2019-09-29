@@ -17,7 +17,8 @@
 package com.android.car.dialer.ui.search;
 
 import android.app.Application;
-import android.content.ContentResolver;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.ContactsContract;
@@ -30,6 +31,9 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.android.car.dialer.R;
+import com.android.car.dialer.livedata.SharedPreferencesLiveData;
+import com.android.car.dialer.ui.common.entity.ContactSortingInfo;
 import com.android.car.telephony.common.Contact;
 import com.android.car.telephony.common.InMemoryPhoneBook;
 import com.android.car.telephony.common.ObservableAsyncQuery;
@@ -48,12 +52,15 @@ public class ContactResultsViewModel extends AndroidViewModel {
 
     private final ContactResultsLiveData mContactSearchResultsLiveData;
     private final MutableLiveData<String> mSearchQueryLiveData;
+    private final SharedPreferencesLiveData mSharedPreferencesLiveData;
 
     public ContactResultsViewModel(@NonNull Application application) {
         super(application);
         mSearchQueryLiveData = new MutableLiveData<>();
-        mContactSearchResultsLiveData = new ContactResultsLiveData(application.getContentResolver(),
-                mSearchQueryLiveData);
+        mSharedPreferencesLiveData =
+                new SharedPreferencesLiveData(application, R.string.sort_order_key);
+        mContactSearchResultsLiveData = new ContactResultsLiveData(application,
+                mSearchQueryLiveData, mSharedPreferencesLiveData);
     }
 
     void setSearchQuery(String searchQuery) {
@@ -73,17 +80,28 @@ public class ContactResultsViewModel extends AndroidViewModel {
     }
 
     private static class ContactResultsLiveData extends MediatorLiveData<List<Contact>> {
+        private final Context mContext;
         private final SearchQueryParamProvider mSearchQueryParamProvider;
         private final ObservableAsyncQuery mObservableAsyncQuery;
+        private final LiveData<String> mSearchQueryLiveData;
+        private final LiveData<List<Contact>> mContactListLiveData;
+        private final SharedPreferencesLiveData mSharedPreferencesLiveData;
 
-        ContactResultsLiveData(ContentResolver contentResolver,
-                LiveData<String> searchQueryLiveData) {
+        ContactResultsLiveData(Context context,
+                LiveData<String> searchQueryLiveData,
+                SharedPreferencesLiveData sharedPreferencesLiveData) {
+            mContext = context;
             mSearchQueryParamProvider = new SearchQueryParamProvider(searchQueryLiveData);
             mObservableAsyncQuery = new ObservableAsyncQuery(mSearchQueryParamProvider,
-                    contentResolver, this::onQueryFinished);
+                    context.getContentResolver(), this::onQueryFinished);
 
-            addSource(InMemoryPhoneBook.get().getContactsLiveData(), this::onContactsChange);
-            addSource(searchQueryLiveData, this::onSearchQueryChanged);
+            mContactListLiveData = InMemoryPhoneBook.get().getContactsLiveData();
+            addSource(mContactListLiveData, this::onContactsChange);
+            mSearchQueryLiveData = searchQueryLiveData;
+            addSource(mSearchQueryLiveData, this::onSearchQueryChanged);
+
+            mSharedPreferencesLiveData = sharedPreferencesLiveData;
+            addSource(mSharedPreferencesLiveData, this::onSortOrderChanged);
         }
 
         private void onContactsChange(List<Contact> contactList) {
@@ -91,17 +109,30 @@ public class ContactResultsViewModel extends AndroidViewModel {
                 mObservableAsyncQuery.stopQuery();
                 setValue(Collections.emptyList());
             } else {
-                mObservableAsyncQuery.startQuery();
+                onSearchQueryChanged(mSearchQueryLiveData.getValue());
             }
         }
 
         private void onSearchQueryChanged(String searchQuery) {
             if (TextUtils.isEmpty(searchQuery)) {
                 mObservableAsyncQuery.stopQuery();
-                setValue(Collections.emptyList());
+                List<Contact> contacts = mContactListLiveData.getValue();
+                setValue(contacts == null ? Collections.emptyList() : contacts);
             } else {
                 mObservableAsyncQuery.startQuery();
             }
+        }
+
+        private void onSortOrderChanged(SharedPreferences unusedSharedPreferences) {
+            if (getValue() == null) {
+                return;
+            }
+
+            List<Contact> contacts = new ArrayList<>();
+            contacts.addAll(getValue());
+            Collections.sort(contacts,
+                    ContactSortingInfo.getSortingInfo(mContext, mSharedPreferencesLiveData).first);
+            setValue(contacts);
         }
 
         private void onQueryFinished(@Nullable Cursor cursor) {
@@ -119,6 +150,8 @@ public class ContactResultsViewModel extends AndroidViewModel {
                     contacts.add(contact);
                 }
             }
+            Collections.sort(contacts,
+                    ContactSortingInfo.getSortingInfo(mContext, mSharedPreferencesLiveData).first);
             setValue(contacts);
             cursor.close();
         }

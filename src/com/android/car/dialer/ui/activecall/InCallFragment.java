@@ -16,7 +16,6 @@
 
 package com.android.car.dialer.ui.activecall;
 
-import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -128,22 +127,23 @@ public abstract class InCallFragment extends Fragment {
                 LetterTileDrawable letterTile = TelecomUtils.createLetterTile(
                         getContext(), info.getDisplayName());
 
-                Glide.with(getContext())
-                        .asBitmap()
+                Glide.with(this)
                         .load(info.getAvatarUri())
                         .apply(new RequestOptions().centerCrop().error(letterTile))
-                        .into(new SimpleTarget<Bitmap>() {
+                        .into(new SimpleTarget<Drawable>() {
                             @Override
-                            public void onResourceReady(Bitmap resource,
-                                    Transition<? super Bitmap> glideAnimation) {
-                                // set showAnimation to false mostly because bindUserProfileView
-                                // called several times, and we don't want the image to flicker
-                                mBackgroundImage.setBackgroundImage(resource, false);
-                                mAvatarView.setImageBitmap(resource);
+                            public void onResourceReady(Drawable resource,
+                                    Transition<? super Drawable> glideAnimation) {
+                                mBackgroundImage.setAlpha(getResources().getFloat(
+                                        R.dimen.config_background_image_alpha));
+                                mBackgroundImage.setBackgroundDrawable(resource);
+                                mAvatarView.setImageDrawable(resource);
                             }
 
                             @Override
                             public void onLoadFailed(Drawable errorDrawable) {
+                                mBackgroundImage.setAlpha(getResources().getFloat(
+                                        R.dimen.config_background_image_error_alpha));
                                 mBackgroundImage.setBackgroundColor(letterTile.getColor());
                                 mAvatarView.setImageDrawable(letterTile);
                             }
