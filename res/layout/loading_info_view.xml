@@ -18,36 +18,32 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
-
-    <com.android.car.apps.common.BackgroundImageView
-        android:id="@+id/background_image"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:visibility="gone"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"/>
-
+    android:layout_height="match_parent">
     <ImageView
-        android:id="@+id/avatar"
-        android:layout_width="@dimen/contact_details_avatar_size"
-        android:layout_height="@dimen/contact_details_avatar_size"
-        android:layout_marginTop="@dimen/contact_details_avatar_margin_top"
+        android:id="@+id/loading_info_icon"
+        android:layout_width="@dimen/loading_info_icon_size"
+        android:layout_height="@dimen/loading_info_icon_size"
+        android:tint="@color/primary_icon_color"
+        android:layout_marginBottom="@dimen/loading_info_icon_margin_bottom"
         app:layout_constraintVertical_chainStyle="packed"
-        app:layout_constraintBottom_toTopOf="@+id/title"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/loading_info_message"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent"/>
 
     <TextView
-        android:id="@id/title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:singleLine="true"
-        android:layout_marginTop="@dimen/contact_details_title_margin_top"
-        android:layout_marginBottom="@dimen/contact_details_title_margin_bottom"
-        android:textAppearance="@style/TextAppearance.ContactDetailsTitle"
-        app:layout_constraintTop_toBottomOf="@id/avatar"
+        android:id="@id/loading_info_message"
+        style="@style/FullScreenErrorMessageStyle"
+        app:layout_constraintTop_toBottomOf="@id/loading_info_icon"
+        app:layout_constraintBottom_toTopOf="@+id/loading_info_action_button"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <com.android.car.apps.common.UxrButton
+        android:id="@id/loading_info_action_button"
+        style="@style/FullScreenErrorButtonStyle"
+        android:layout_marginTop="@dimen/loading_info_button_margin_top"
+        app:layout_constraintTop_toBottomOf="@id/loading_info_message"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
