@@ -29,6 +29,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.car.apps.common.widget.PagedRecyclerView;
+import com.android.car.arch.common.FutureData;
 import com.android.car.dialer.CarDialerRobolectricTestRunner;
 import com.android.car.dialer.FragmentTestActivity;
 import com.android.car.dialer.R;
@@ -86,11 +87,11 @@ public class CallHistoryFragmentTest {
                 CallHistoryLiveData.CallType.INCOMING_TYPE);
         PhoneCallLog.Record record2 = new PhoneCallLog.Record(TIME_STAMP_2,
                 CallHistoryLiveData.CallType.OUTGOING_TYPE);
-        UiCallLog uiCallLog = new UiCallLog(UI_CALLOG_TITLE, UI_CALLOG_TEXT, PHONE_NUMBER, mMockUri,
-                Arrays.asList(record1, record2));
+        UiCallLog uiCallLog = new UiCallLog(UI_CALLOG_TITLE, UI_CALLOG_TEXT, PHONE_NUMBER, null,
+                mMockUri, Arrays.asList(record1, record2));
 
-        MutableLiveData<List<Object>> callLog = new MutableLiveData<>();
-        callLog.setValue(Arrays.asList(HEADER, uiCallLog));
+        MutableLiveData<FutureData<List<Object>>> callLog = new MutableLiveData<>();
+        callLog.setValue(new FutureData<>(false, Arrays.asList(HEADER, uiCallLog)));
         ShadowAndroidViewModelFactory.add(CallHistoryViewModel.class, mMockCallHistoryViewModel);
         when(mMockCallHistoryViewModel.getCallHistory()).thenReturn(callLog);
 
