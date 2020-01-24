@@ -51,12 +51,12 @@
     <string name="call_back">Call back</string>
 
     <!-- Audio route -->
-    <!-- Label for routing phone audio to the vehicle [CHAR LIMIT=30] -->
-    <string name="audio_route_vehicle">Vehicle bluetooth</string>
+    <!-- Label for routing phone audio to the vehicle using car speakers [CHAR LIMIT=30] -->
+    <string name="audio_route_vehicle">Car speakers</string>
     <!-- Label for routing phone audio to the phone speaker [CHAR LIMIT=30] -->
-    <string name="audio_route_phone_speaker">Speaker phone</string>
+    <string name="audio_route_phone_speaker">Phone speaker</string>
     <!-- Label for routing phone audio to the phone earpiece. [CHAR LIMIT=30] -->
-    <string name="audio_route_handset">Handset</string>
+    <string name="audio_route_handset">Phone</string>
 
     <!-- Button label to dial a manually entered phone number -->
     <string name="dial_a_number">Dial a number</string>
@@ -86,7 +86,7 @@
     <string name="contact_list_empty">No contacts</string>
 
     <!-- Secondary message shown when the contact list page or call history page do not have any contents but will be available after syncing from phone [CHAR_LIMIT=200] -->
-    <string name="available_after_sync">Available after syncing. Make sure you have allowed to share contacts on your phone.</string>
+    <string name="available_after_sync">Available after syncing. Make sure you have allowed sharing contacts on your phone.</string>
 
     <!-- Error message shown when on the favorites page without any favorites added [CHAR_LIMIT=50] -->
     <string name="favorites_empty">No favorites</string>
