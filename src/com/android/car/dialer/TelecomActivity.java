@@ -24,6 +24,7 @@ import android.os.Bundle;
 import android.telecom.Call;
 import android.telephony.PhoneNumberUtils;
 import android.util.Log;
+import android.view.WindowManager;
 
 import com.android.car.dialer.telecom.InMemoryPhoneBook;
 import com.android.car.dialer.telecom.PhoneLoader;
@@ -88,6 +89,8 @@ public class TelecomActivity extends CarDrawerActivity implements CallListener {
 
         setMainContent(R.layout.telecom_activity);
         getWindow().getDecorView().setBackgroundColor(getColor(R.color.phone_theme));
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
         updateTitle();
 
         mUiCallManager = UiCallManager.init(getApplicationContext());
