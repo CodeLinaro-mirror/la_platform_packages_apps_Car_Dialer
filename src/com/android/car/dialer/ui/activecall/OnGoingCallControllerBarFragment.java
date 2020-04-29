@@ -21,7 +21,6 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.telecom.Call;
 import android.telecom.CallAudioState;
-import android.telecom.CallAudioState.CallAudioRoute;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
@@ -91,6 +90,7 @@ public class OnGoingCallControllerBarFragment extends Fragment {
     private LiveData<List<Call>> mCallListLiveData;
     private int mPrimaryCallState;
     private int mActiveRoute;
+    private MutableLiveData<CallAudioState> mCallAudioState;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -143,6 +143,7 @@ public class OnGoingCallControllerBarFragment extends Fragment {
         inCallViewModel.getAudioRoute().observe(this, this::updateViewBasedOnAudioRoute);
 
         mDialpadState = inCallViewModel.getDialpadOpenState();
+        mCallAudioState = inCallViewModel.getCallAudioState();
 
         mCallListLiveData = inCallViewModel.getAllCallList();
         mCallListLiveData.observe(this, v -> updatePauseButtonEnabledState());
@@ -165,6 +166,8 @@ public class OnGoingCallControllerBarFragment extends Fragment {
                 onMuteMic();
             }
         });
+
+        mCallAudioState.observe(this, state -> mMuteButton.setActivated(state.isMuted()));
 
         View dialPadButton = fragmentView.findViewById(R.id.toggle_dialpad_button);
         dialPadButton.setOnClickListener(v -> mDialpadState.setValue(!mDialpadState.getValue()));
@@ -274,7 +277,7 @@ public class OnGoingCallControllerBarFragment extends Fragment {
         }
     }
 
-    private void onSetAudioRoute(@CallAudioRoute int audioRoute) {
+    private void onSetAudioRoute(int audioRoute) {
         UiCallManager.get().setAudioRoute(audioRoute);
         mActiveRoute = audioRoute;
         updateAudioRouteListItems();

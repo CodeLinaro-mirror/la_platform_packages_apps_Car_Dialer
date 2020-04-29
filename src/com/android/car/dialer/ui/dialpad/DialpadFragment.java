@@ -38,14 +38,13 @@ import com.android.car.apps.common.util.ViewUtils;
 import com.android.car.dialer.R;
 import com.android.car.dialer.log.L;
 import com.android.car.dialer.telecom.UiCallManager;
-import com.android.car.dialer.ui.search.ContactResultsViewModel;
 import com.android.car.dialer.ui.view.ContactAvatarOutputlineProvider;
 import com.android.car.telephony.common.Contact;
 import com.android.car.telephony.common.InMemoryPhoneBook;
 import com.android.car.telephony.common.PhoneNumber;
 import com.android.car.telephony.common.TelecomUtils;
 import com.android.car.ui.recyclerview.CarUiRecyclerView;
-import com.android.car.ui.toolbar.Toolbar;
+import com.android.car.ui.toolbar.ToolbarController;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -82,7 +81,7 @@ public class DialpadFragment extends AbstractDialpadFragment {
                     .build();
     private final TypeDownResultsAdapter mAdapter = new TypeDownResultsAdapter();
 
-    private ContactResultsViewModel mContactResultsViewModel;
+    private TypeDownResultsViewModel mTypeDownResultsViewModel;
     private TextView mTitleView;
     @Nullable
     private TextView mDisplayName;
@@ -128,9 +127,9 @@ public class DialpadFragment extends AbstractDialpadFragment {
         L.d(TAG, "onCreate mode: %s", mMode);
         mToneGenerator = new ToneGenerator(AudioManager.STREAM_MUSIC, TONE_RELATIVE_VOLUME);
 
-        mContactResultsViewModel = ViewModelProviders.of(this).get(
-                ContactResultsViewModel.class);
-        mContactResultsViewModel.getContactSearchResults().observe(this,
+        mTypeDownResultsViewModel = ViewModelProviders.of(this).get(
+                TypeDownResultsViewModel.class);
+        mTypeDownResultsViewModel.getContactSearchResults().observe(this,
                 contactResults -> mAdapter.setData(contactResults));
     }
 
@@ -188,7 +187,7 @@ public class DialpadFragment extends AbstractDialpadFragment {
     }
 
     @Override
-    protected void setupToolbar(Toolbar toolbar) {
+    protected void setupToolbar(ToolbarController toolbar) {
         // Only setup the actionbar if we're in dial mode.
         // In all the other modes, there will be another fragment in the activity
         // at the same time, and we don't want to mess up it's action bar.
@@ -255,16 +254,10 @@ public class DialpadFragment extends AbstractDialpadFragment {
         if (getResources().getBoolean(R.bool.config_show_type_down_list_on_dialpad)) {
             resetContactInfo();
             ViewUtils.setVisible(mRecyclerView, true);
-            mContactResultsViewModel.setSearchQuery(number.toString());
+            mTypeDownResultsViewModel.setSearchQuery(number.toString());
         } else {
             presentContactInfo(number.toString());
         }
-    }
-
-    @Override
-    public void onToolbarHeightChange(int toolbarHeight) {
-        // Offset the dialpad to under the tabs in normal dial mode.
-        getView().setPadding(0, mMode == MODE_DIAL ? toolbarHeight : 0, 0, 0);
     }
 
     private void presentContactInfo(@NonNull String number) {
