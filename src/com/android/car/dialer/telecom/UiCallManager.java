@@ -227,15 +227,16 @@ public class UiCallManager {
         if (isBluetoothCall()
                 && mBluetoothHeadsetClient != null
                 && !mBluetoothHeadsetClient.getConnectedDevices().isEmpty()) {
-            // TODO: Make this handle multiple devices
-            BluetoothDevice device = mBluetoothHeadsetClient.getConnectedDevices().get(0);
-            int audioState = mBluetoothHeadsetClient.getAudioState(device);
+            for (BluetoothDevice device : mBluetoothHeadsetClient.getConnectedDevices()) {
+                int audioState = mBluetoothHeadsetClient.getAudioState(device);
 
-            if (audioState == BluetoothHeadsetClient.STATE_AUDIO_CONNECTED) {
-                return CallAudioState.ROUTE_BLUETOOTH;
-            } else {
-                return CallAudioState.ROUTE_EARPIECE;
+                if (audioState == BluetoothHeadsetClient.STATE_AUDIO_CONNECTED) {
+                    return CallAudioState.ROUTE_BLUETOOTH;
+                } else {
+                    continue;
+                }
             }
+            return CallAudioState.ROUTE_EARPIECE;
         } else {
             CallAudioState audioState = getCallAudioStateOrNull();
             int audioRoute = audioState != null ? audioState.getRoute() : 0;
