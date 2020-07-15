@@ -219,15 +219,16 @@ public class UiCallManager {
                 return CallAudioState.ROUTE_EARPIECE;
             }
 
-            // TODO: Make this handle multiple devices
-            BluetoothDevice device = devices.get(0);
-            int audioState = bluetoothHeadsetClient.getAudioState(device);
+            for (BluetoothDevice connectedDevice : devices) {
+                int audioState = bluetoothHeadsetClient.getAudioState(connectedDevice);
 
-            if (audioState == BluetoothHeadsetClient.STATE_AUDIO_CONNECTED) {
-                return CallAudioState.ROUTE_BLUETOOTH;
-            } else {
-                return CallAudioState.ROUTE_EARPIECE;
+                if (audioState == BluetoothHeadsetClient.STATE_AUDIO_CONNECTED) {
+                    return CallAudioState.ROUTE_BLUETOOTH;
+                } else {
+                    continue;
+                }
             }
+            return CallAudioState.ROUTE_EARPIECE;
         } else {
             CallAudioState audioState = getCallAudioStateOrNull();
             int audioRoute = audioState != null ? audioState.getRoute() : 0;
