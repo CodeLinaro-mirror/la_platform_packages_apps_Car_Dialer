@@ -13,7 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-
 android_app {
     name: "CarDialerApp",
 
@@ -23,13 +22,14 @@ android_app {
 
     platform_apis: true,
 
-    required: ["privapp_whitelist_com.android.car.dialer"],
+    required: ["allowed_privapp_com.android.car.dialer"],
 
     overrides: ["Dialer"],
 
     libs: ["android.car"],
 
     static_libs: [
+        "car-dialer-framework-dep",
         "androidx.recyclerview_recyclerview",
         "androidx.lifecycle_lifecycle-extensions",
         "androidx.preference_preference",
@@ -41,6 +41,7 @@ android_app {
         "car-telephony-common",
         "car-theme-lib",
         "car-ui-lib",
+        "car-uxr-client-lib",
         "androidx-constraintlayout_constraintlayout-solver",
         "guava",
         "glide-prebuilt",
@@ -88,6 +89,7 @@ android_app {
     libs: ["android.car"],
 
     static_libs: [
+        "car-dialer-fake-framework-dep",
         "androidx.recyclerview_recyclerview",
         "androidx.lifecycle_lifecycle-extensions",
         "androidx.preference_preference",
@@ -99,6 +101,7 @@ android_app {
         "car-telephony-common",
         "car-theme-lib",
         "car-ui-lib",
+        "car-uxr-client-lib",
         "androidx-constraintlayout_constraintlayout-solver",
         "guava",
         "glide-prebuilt",
@@ -125,6 +128,16 @@ android_app {
             enabled: false,
         },
     },
+
+    // runtime cc library which is used by mockito-target-extended.
+    jni_libs: [
+        // For mockito extended
+        "libdexmakerjvmtiagent",
+        "libstaticjvmtiagent",
+    ],
+
+    // Enforce the jni libraries to be grouped into the APK file.
+    use_embedded_native_libs: true,
 }
 
 //##################################################################################
