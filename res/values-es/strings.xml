@@ -76,8 +76,8 @@
     <string name="pref_connected_phone_title" msgid="5472866963149472593">"Teléfono conectado"</string>
     <string name="pref_no_incoming_call_hun_title" msgid="2314257779205958332">"Privacidad"</string>
     <string name="pref_no_incoming_call_hun_summary" msgid="8833377984331845097">"Solo mostrar alertas de llamada agrupadas"</string>
-    <string name="pref_no_fullscreen_active_call_ui_title" msgid="5306041252780754725">"Llamada activa"</string>
-    <string name="pref_no_fullscreen_active_call_ui_summary" msgid="2316908551231937870">"Mostrar vista de llamada activa al responder a una llamada"</string>
+    <string name="pref_show_fullscreen_active_call_ui_title" msgid="6924304583510509581">"Llamada activa"</string>
+    <string name="pref_show_fullscreen_active_call_ui_summary" msgid="1629142960991476502">"Mostrar vista de llamada activa al responder una llamada"</string>
     <string name="given_name_first_title" msgid="8072187841056104968">"Nombre"</string>
     <string name="family_name_first_title" msgid="7721976826282427987">"Apellido"</string>
     <!-- no translation found for sort_order_default_value (5876201942256731358) -->
