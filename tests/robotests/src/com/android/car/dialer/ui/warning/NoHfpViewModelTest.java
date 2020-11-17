@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.car.dialer.ui;
+package com.android.car.dialer.ui.warning;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -26,14 +26,14 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 
+import androidx.lifecycle.LiveData;
+
 import com.android.car.dialer.CarDialerRobolectricTestRunner;
 import com.android.car.dialer.R;
 import com.android.car.dialer.TestDialerApplication;
 import com.android.car.dialer.bluetooth.UiBluetoothMonitor;
-import com.android.car.dialer.livedata.BluetoothErrorStringLiveData;
 import com.android.car.dialer.livedata.BluetoothPairListLiveData;
 import com.android.car.dialer.livedata.BluetoothStateLiveData;
-import com.android.car.dialer.livedata.HfpDeviceListLiveData;
 import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.dialer.testutils.ShadowBluetoothAdapterForDialer;
 
@@ -46,14 +46,15 @@ import org.robolectric.annotation.Config;
 import org.robolectric.shadow.api.Shadow;
 
 import java.util.Collections;
+import java.util.List;
 
 @RunWith(CarDialerRobolectricTestRunner.class)
 @Config(shadows = ShadowBluetoothAdapterForDialer.class)
-public class TelecomActivityViewModelTest {
+public class NoHfpViewModelTest {
 
-    private TelecomActivityViewModel mTelecomActivityViewModel;
+    private NoHfpViewModel mNoHfpViewModel;
     private Context mContext;
-    private HfpDeviceListLiveData mHfpDeviceListLiveData;
+    private LiveData<List<BluetoothDevice>> mHfpDeviceListLiveData;
     private BluetoothPairListLiveData mPairedListLiveData;
     private BluetoothStateLiveData mBluetoothStateLiveData;
 
@@ -74,7 +75,7 @@ public class TelecomActivityViewModelTest {
         ShadowBluetoothAdapterForDialer.setBluetoothAvailable(false);
         initializeViewModel();
 
-        assertThat(mTelecomActivityViewModel.getErrorMessage().getValue()).isEqualTo(
+        assertThat(mNoHfpViewModel.getBluetoothErrorStringLiveData().getValue()).isEqualTo(
                 mContext.getString(R.string.bluetooth_unavailable));
     }
 
@@ -88,7 +89,7 @@ public class TelecomActivityViewModelTest {
 
         assertThat(mBluetoothStateLiveData.getValue()).isEqualTo(
                 BluetoothStateLiveData.BluetoothState.DISABLED);
-        assertThat(mTelecomActivityViewModel.getErrorMessage().getValue()).isEqualTo(
+        assertThat(mNoHfpViewModel.getBluetoothErrorStringLiveData().getValue()).isEqualTo(
                 mContext.getString(R.string.bluetooth_disabled));
     }
 
@@ -105,7 +106,7 @@ public class TelecomActivityViewModelTest {
                 BluetoothStateLiveData.BluetoothState.ENABLED);
 
         assertThat(mPairedListLiveData.getValue().isEmpty()).isTrue();
-        assertThat(mTelecomActivityViewModel.getErrorMessage().getValue()).isEqualTo(
+        assertThat(mNoHfpViewModel.getBluetoothErrorStringLiveData().getValue()).isEqualTo(
                 mContext.getString(R.string.bluetooth_unpaired));
     }
 
@@ -125,12 +126,12 @@ public class TelecomActivityViewModelTest {
         assertThat(mPairedListLiveData.getValue().isEmpty()).isFalse();
 
         assertThat(mHfpDeviceListLiveData.getValue().isEmpty()).isTrue();
-        assertThat(mTelecomActivityViewModel.getErrorMessage().getValue()).isEqualTo(
+        assertThat(mNoHfpViewModel.getBluetoothErrorStringLiveData().getValue()).isEqualTo(
                 mContext.getString(R.string.no_hfp));
     }
 
     @Test
-    public void testDialerAppState_bluetoothAllSet_dialerAppStateDefault() {
+    public void testDialerAppState_bluetoothAllSet_dialerAppNoError() {
         ShadowBluetoothAdapterForDialer.setBluetoothAvailable(true);
         BluetoothDevice mockBluetoothDevice = mock(BluetoothDevice.class);
         ShadowBluetoothAdapterForDialer shadowBluetoothAdapter = Shadow.extract(
@@ -144,7 +145,7 @@ public class TelecomActivityViewModelTest {
 
         initializeViewModel();
 
-        assertThat(mTelecomActivityViewModel.getErrorMessage().getValue()).isEqualTo(
+        assertThat(mNoHfpViewModel.getBluetoothErrorStringLiveData().getValue()).isEqualTo(
                 BluetoothErrorStringLiveData.NO_BT_ERROR);
     }
 
@@ -153,9 +154,9 @@ public class TelecomActivityViewModelTest {
         mHfpDeviceListLiveData = UiBluetoothMonitor.get().getHfpDeviceListLiveData();
         mPairedListLiveData = UiBluetoothMonitor.get().getPairListLiveData();
         mBluetoothStateLiveData = UiBluetoothMonitor.get().getBluetoothStateLiveData();
-        mTelecomActivityViewModel = new TelecomActivityViewModel((Application) mContext);
+        mNoHfpViewModel = new NoHfpViewModel((Application) mContext);
         // Observers needed so that the liveData's internal initialization is triggered
-        mTelecomActivityViewModel.getErrorMessage().observeForever(s -> {
+        mNoHfpViewModel.getBluetoothErrorStringLiveData().observeForever(o -> {
         });
     }
 }
