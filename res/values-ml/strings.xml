@@ -76,8 +76,8 @@
     <string name="pref_connected_phone_title" msgid="5472866963149472593">"കണക്‌റ്റ് ചെയ്‌ത ഫോൺ"</string>
     <string name="pref_no_incoming_call_hun_title" msgid="2314257779205958332">"സ്വകാര്യത"</string>
     <string name="pref_no_incoming_call_hun_summary" msgid="8833377984331845097">"ക്ലസ്‌റ്ററിൽ കോൾ മുന്നറിയിപ്പുകൾ മാത്രം കാണിക്കുക"</string>
-    <string name="pref_no_fullscreen_active_call_ui_title" msgid="5306041252780754725">"സജീവമായ കോൾ"</string>
-    <string name="pref_no_fullscreen_active_call_ui_summary" msgid="2316908551231937870">"കോളിന് മറുപടി നൽകുമ്പോൾ സജീവമായ കോൾ കാഴ്‌ച കാണിക്കുക"</string>
+    <string name="pref_show_fullscreen_active_call_ui_title" msgid="6924304583510509581">"സജീവമായ കോൾ"</string>
+    <string name="pref_show_fullscreen_active_call_ui_summary" msgid="1629142960991476502">"കോളിന് മറുപടി നൽകുമ്പോൾ സജീവമായ കോൾ കാഴ്‌ച കാണിക്കുക"</string>
     <string name="given_name_first_title" msgid="8072187841056104968">"ഫസ്റ്റ് നെയിം"</string>
     <string name="family_name_first_title" msgid="7721976826282427987">"ലാസ്റ്റ് നെയിം"</string>
     <!-- no translation found for sort_order_default_value (5876201942256731358) -->

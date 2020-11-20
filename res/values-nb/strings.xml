@@ -76,8 +76,8 @@
     <string name="pref_connected_phone_title" msgid="5472866963149472593">"Tilkoblet telefon"</string>
     <string name="pref_no_incoming_call_hun_title" msgid="2314257779205958332">"Privat"</string>
     <string name="pref_no_incoming_call_hun_summary" msgid="8833377984331845097">"Vis bare anropsvarsler i grupper"</string>
-    <string name="pref_no_fullscreen_active_call_ui_title" msgid="5306041252780754725">"Aktivt anrop"</string>
-    <string name="pref_no_fullscreen_active_call_ui_summary" msgid="2316908551231937870">"Vis det aktive anropet når du besvarer anrop"</string>
+    <string name="pref_show_fullscreen_active_call_ui_title" msgid="6924304583510509581">"Aktivt anrop"</string>
+    <string name="pref_show_fullscreen_active_call_ui_summary" msgid="1629142960991476502">"Vis det aktive anropet når du besvarer anrop"</string>
     <string name="given_name_first_title" msgid="8072187841056104968">"Fornavn"</string>
     <string name="family_name_first_title" msgid="7721976826282427987">"Etternavn"</string>
     <!-- no translation found for sort_order_default_value (5876201942256731358) -->
