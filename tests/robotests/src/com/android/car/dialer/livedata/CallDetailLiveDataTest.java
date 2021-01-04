@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -74,19 +75,14 @@ public class CallDetailLiveDataTest {
 
     @Test
     public void testOnActiveRegistry() {
-        mCallDetailLiveData.onActive();
-
-        verify(mMockCall).registerCallback(any());
-    }
-
-    @Test
-    public void testOnLifecycleStart() {
         mCallDetailLiveData.observe(mMockLifecycleOwner, (value) -> mMockObserver.onChanged(value));
         verify(mMockObserver, never()).onChanged(any());
         assertThat(mCallDetailLiveData.hasObservers()).isTrue();
         assertThat(mCallDetailLiveData.hasActiveObservers()).isFalse();
 
+        reset(mMockCall);
         mLifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START);
+
         assertThat(mCallDetailLiveData.hasActiveObservers()).isTrue();
         verify(mMockObserver).onChanged(any());
         verify(mMockCall).registerCallback(any());
@@ -124,6 +120,8 @@ public class CallDetailLiveDataTest {
     @Test
     public void testOnInactiveUnregister() {
         startObserving();
+
+        reset(mMockCall);
         mLifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY);
 
         verify(mMockCall).unregisterCallback(mCallbackCaptor.getValue());

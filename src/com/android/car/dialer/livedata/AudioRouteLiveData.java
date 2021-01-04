@@ -16,25 +16,30 @@
 
 package com.android.car.dialer.livedata;
 
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothHeadsetClient;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 
-import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 
+import com.android.car.dialer.bluetooth.UiBluetoothMonitor;
 import com.android.car.dialer.log.L;
 import com.android.car.dialer.telecom.UiCallManager;
+
+import java.util.List;
 
 /**
  * Provides the current connecting audio route.
  */
-public class AudioRouteLiveData extends LiveData<Integer> {
+public class AudioRouteLiveData extends MediatorLiveData<Integer> {
     private static final String TAG = "CD.AudioRouteLiveData";
 
     private final Context mContext;
     private final IntentFilter mAudioRouteChangeFilter;
+    private final UiCallManager mUiCallManager;
 
     private final BroadcastReceiver mAudioRouteChangeReceiver = new BroadcastReceiver() {
         @Override
@@ -43,14 +48,21 @@ public class AudioRouteLiveData extends LiveData<Integer> {
         }
     };
 
-    public AudioRouteLiveData(Context context) {
+    public AudioRouteLiveData(
+            Context context,
+            UiBluetoothMonitor bluetoothMonitor,
+            UiCallManager callManager) {
         mContext = context;
         mAudioRouteChangeFilter =
                 new IntentFilter(BluetoothHeadsetClient.ACTION_AUDIO_STATE_CHANGED);
+        mUiCallManager = callManager;
+        // TODO: introduce a new AudioStateChanged listener for listening to the audio state change.
+        addSource(bluetoothMonitor.getHfpDeviceListLiveData(), this::onHfpDeviceListChange);
     }
 
     @Override
     protected void onActive() {
+        super.onActive();
         updateAudioRoute();
         mContext.registerReceiver(mAudioRouteChangeReceiver, mAudioRouteChangeFilter);
     }
@@ -58,13 +70,18 @@ public class AudioRouteLiveData extends LiveData<Integer> {
     @Override
     protected void onInactive() {
         mContext.unregisterReceiver(mAudioRouteChangeReceiver);
+        super.onInactive();
     }
 
     private void updateAudioRoute() {
-        int audioRoute = UiCallManager.get().getAudioRoute();
+        int audioRoute = mUiCallManager.getAudioRoute();
         if (getValue() == null || audioRoute != getValue()) {
             L.d(TAG, "updateAudioRoute to %s", audioRoute);
             setValue(audioRoute);
         }
+    }
+
+    private void onHfpDeviceListChange(List<BluetoothDevice> bluetoothDeviceList) {
+        updateAudioRoute();
     }
 }

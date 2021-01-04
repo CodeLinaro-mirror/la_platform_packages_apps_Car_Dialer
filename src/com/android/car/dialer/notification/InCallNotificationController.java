@@ -100,6 +100,7 @@ public final class InCallNotificationController {
 
         mNotificationBuilder = new Notification.Builder(mContext, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_phone)
+                .setColor(mContext.getColor(R.color.notification_app_icon_color))
                 .setCategory(Notification.CATEGORY_CALL)
                 .setOngoing(true)
                 .setAutoCancel(false);
@@ -178,7 +179,8 @@ public final class InCallNotificationController {
 
     private PendingIntent getFullscreenIntent(Call call) {
         Intent intent = getIntent(NotificationService.ACTION_SHOW_FULLSCREEN_UI, call);
-        return PendingIntent.getService(mContext, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        return PendingIntent.getService(mContext, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     private Notification.Action getAction(Call call, @StringRes int actionText,
@@ -188,14 +190,15 @@ public final class InCallNotificationController {
                 mContext,
                 0,
                 getIntent(intentAction, call),
-                PendingIntent.FLAG_UPDATE_CURRENT);
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         return new Notification.Action.Builder(null, text, intent).build();
     }
 
     private Intent getIntent(String action, Call call) {
         Intent intent = new Intent(action, null, mContext, NotificationService.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.putExtra(NotificationService.EXTRA_CALL_ID, call.getDetails().getTelecomCallId());
+        intent.putExtra(NotificationService.EXTRA_PHONE_NUMBER,
+                call.getDetails().getTelecomCallId());
         return intent;
     }
 }

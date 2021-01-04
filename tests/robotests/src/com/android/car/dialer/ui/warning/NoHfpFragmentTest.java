@@ -17,12 +17,6 @@ package com.android.car.dialer.ui.warning;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.mockito.Mockito.when;
-
-import android.car.Car;
-import android.car.CarNotConnectedException;
-import android.car.drivingstate.CarUxRestrictions;
-import android.car.drivingstate.CarUxRestrictionsManager;
 import android.view.View;
 import android.widget.TextView;
 
@@ -32,48 +26,29 @@ import com.android.car.dialer.R;
 import com.android.car.dialer.TestDialerApplication;
 import com.android.car.dialer.bluetooth.UiBluetoothMonitor;
 import com.android.car.dialer.telecom.UiCallManager;
-import com.android.car.dialer.testutils.ShadowCar;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.Robolectric;
 import org.robolectric.RuntimeEnvironment;
-import org.robolectric.annotation.Config;
 
 @RunWith(CarDialerRobolectricTestRunner.class)
-@Config(shadows = ShadowCar.class)
 public class NoHfpFragmentTest {
-    private static final String ERROR_MSG = "ERROR!!!";
-    private static final String UPDATED_ERROR_MSG = "ANOTHER ERROR!!!!";
 
     private NoHfpFragment mNoHfpFragment;
     private FragmentTestActivity mFragmentTestActivity;
 
-    @Mock
-    private Car mMockCar;
-    @Mock
-    private CarUxRestrictionsManager mMockCarUxRestrictionsManager;
-    @Mock
-    private CarUxRestrictions mMockCarUxRestrictions;
-
     @Before
-    public void setup() throws CarNotConnectedException {
+    public void setup() {
         MockitoAnnotations.initMocks(this);
 
         ((TestDialerApplication) RuntimeEnvironment.application).initUiCallManager();
         UiBluetoothMonitor.init(RuntimeEnvironment.application);
 
-        when(mMockCarUxRestrictionsManager.getCurrentCarUxRestrictions()).thenReturn(
-                mMockCarUxRestrictions);
-        when(mMockCar.getCarManager(Car.CAR_UX_RESTRICTION_SERVICE)).thenReturn(
-                mMockCarUxRestrictionsManager);
-        ShadowCar.setCar(mMockCar);
-
-        mNoHfpFragment = NoHfpFragment.newInstance(ERROR_MSG);
+        mNoHfpFragment = new NoHfpFragment();
         mFragmentTestActivity = Robolectric.buildActivity(
                 FragmentTestActivity.class).create().start().resume().get();
         mFragmentTestActivity.setFragment(mNoHfpFragment);
@@ -88,22 +63,13 @@ public class NoHfpFragmentTest {
     public void createView_displayErrorMsg() {
         View rootView = mNoHfpFragment.getView();
         TextView errorMsgView = rootView.findViewById(R.id.error_string);
-        assertThat(errorMsgView.getText()).isEqualTo(ERROR_MSG);
-    }
-
-    @Test
-    public void setErrorMsg_updateErrorMsgView() {
-        mNoHfpFragment.setErrorMessage(UPDATED_ERROR_MSG);
-
-        View rootView = mNoHfpFragment.getView();
-        TextView errorMsgView = rootView.findViewById(R.id.error_string);
-        assertThat(errorMsgView.getText()).isEqualTo(UPDATED_ERROR_MSG);
+        assertThat(errorMsgView.getText()).isEqualTo(
+                mNoHfpFragment.getString(R.string.bluetooth_disabled));
     }
 
     @After
     public void tearDown() {
         UiBluetoothMonitor.get().tearDown();
         UiCallManager.get().tearDown();
-        ShadowCar.setCar(null);
     }
 }

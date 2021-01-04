@@ -16,16 +16,19 @@
 
 package com.android.car.dialer.bluetooth;
 
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
+import androidx.lifecycle.Transformations;
 
-import com.android.car.dialer.livedata.BluetoothHfpStateLiveData;
 import com.android.car.dialer.livedata.BluetoothPairListLiveData;
 import com.android.car.dialer.livedata.BluetoothStateLiveData;
 import com.android.car.dialer.livedata.HfpDeviceListLiveData;
 import com.android.car.dialer.log.L;
+
+import java.util.List;
 
 /**
  * Class that responsible for getting status of bluetooth connections.
@@ -37,12 +40,10 @@ public class UiBluetoothMonitor {
 
     private final Context mContext;
 
-    private BluetoothHfpStateLiveData mHfpStateLiveData;
     private BluetoothPairListLiveData mPairListLiveData;
     private BluetoothStateLiveData mBluetoothStateLiveData;
     private HfpDeviceListLiveData mHfpDeviceListLiveData;
 
-    private Observer mHfpStateObserver;
     private Observer mPairListObserver;
     private Observer mBluetoothStateObserver;
     private Observer mHfpDeviceListObserver;
@@ -75,17 +76,14 @@ public class UiBluetoothMonitor {
 
     private UiBluetoothMonitor(Context applicationContext) {
         mContext = applicationContext;
-        mHfpStateLiveData = new BluetoothHfpStateLiveData(mContext);
         mPairListLiveData = new BluetoothPairListLiveData(mContext);
         mBluetoothStateLiveData = new BluetoothStateLiveData(mContext);
         mHfpDeviceListLiveData = new HfpDeviceListLiveData(mContext);
 
-        mHfpStateObserver = o -> L.i(TAG, "HfpState is updated");
         mPairListObserver = o -> L.i(TAG, "PairList is updated");
         mBluetoothStateObserver = o -> L.i(TAG, "BluetoothState is updated");
         mHfpDeviceListObserver = o -> L.i(TAG, "HfpDeviceList is updated");
 
-        mHfpStateLiveData.observeForever(mHfpStateObserver);
         mPairListLiveData.observeForever(mPairListObserver);
         mBluetoothStateLiveData.observeForever(mBluetoothStateObserver);
         mHfpDeviceListLiveData.observeForever(mHfpDeviceListObserver);
@@ -96,19 +94,11 @@ public class UiBluetoothMonitor {
      * {@link #get()} won't return a valid {@link UiBluetoothMonitor} after calling this function.
      */
     public void tearDown() {
-        removeObserver(mHfpStateLiveData, mHfpStateObserver);
         removeObserver(mPairListLiveData, mPairListObserver);
         removeObserver(mBluetoothStateLiveData, mBluetoothStateObserver);
         removeObserver(mHfpDeviceListLiveData, mHfpDeviceListObserver);
 
         sUiBluetoothMonitor = null;
-    }
-
-    /**
-     * Returns a LiveData which monitors the HFP profile state changes.
-     */
-    public BluetoothHfpStateLiveData getHfpStateLiveData() {
-        return mHfpStateLiveData;
     }
 
     /**
@@ -128,8 +118,25 @@ public class UiBluetoothMonitor {
     /**
      * Returns a SingleLiveEvent which monitors whether to refresh Dialer.
      */
-    public HfpDeviceListLiveData getHfpDeviceListLiveData() {
+    public LiveData<List<BluetoothDevice>> getHfpDeviceListLiveData() {
         return mHfpDeviceListLiveData;
+    }
+
+    /**
+     * Returns a LiveData which monitors the first HFP Bluetooth device on the connected device
+     * list.
+     */
+    public LiveData<BluetoothDevice> getFirstHfpConnectedDevice() {
+        return Transformations.map(mHfpDeviceListLiveData, (devices) ->
+                devices != null && !devices.isEmpty()
+                        ? devices.get(0)
+                        : null);
+    }
+
+    /** Returns a {@link LiveData} which monitors if there are any connected HFP devices. */
+    public LiveData<Boolean> hasHfpDeviceConnected() {
+        return Transformations.map(mHfpDeviceListLiveData,
+                devices -> devices != null && !devices.isEmpty());
     }
 
     private void removeObserver(LiveData liveData, Observer observer) {

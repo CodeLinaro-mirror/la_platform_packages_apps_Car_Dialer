@@ -80,9 +80,7 @@ class InCallRouter {
 
         int state = call.getState();
         if (state == Call.STATE_RINGING) {
-            if (shouldShowIncomingCallHun()) {
-                routeToNotification(call);
-            }
+            routeToNotification(call);
             // Otherwise, no operations. Incoming call will be displayed outside of Dialer app
             // such as cluster.
         } else if (state != Call.STATE_DISCONNECTED) {
@@ -133,7 +131,9 @@ class InCallRouter {
      * Presents the ringing call in HUN.
      */
     private void routeToNotification(Call call) {
-        mInCallNotificationController.showInCallNotification(call);
+        if (shouldShowIncomingCallHun()) {
+            mInCallNotificationController.showInCallNotification(call);
+        }
         call.registerCallback(new Call.Callback() {
             @Override
             public void onStateChanged(Call call, int state) {
@@ -159,18 +159,24 @@ class InCallRouter {
         }
 
         Intent launchIntent = new Intent(mContext, InCallActivity.class);
-        launchIntent.putExtra(Constants.Intents.EXTRA_SHOW_INCOMING_CALL, showDialpad);
+        launchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        launchIntent.putExtra(Constants.Intents.EXTRA_SHOW_DIALPAD, showDialpad);
         mContext.startActivity(launchIntent);
     }
 
     private boolean shouldShowIncomingCallHun() {
-        return PreferenceManager.getDefaultSharedPreferences(mContext)
-                .getBoolean(mContext.getString(R.string.pref_no_incoming_call_hun_key), true);
+        boolean shouldSuppressHunByDefault =
+                mContext.getResources().getBoolean(R.bool.config_should_suppress_incoming_call_hun);
+        return !PreferenceManager.getDefaultSharedPreferences(mContext)
+                .getBoolean(mContext.getString(R.string.pref_no_incoming_call_hun_key),
+                        shouldSuppressHunByDefault);
     }
 
     private boolean shouldShowFullScreenUi() {
+        boolean shouldShowFullScreenUiByDefault =
+                mContext.getResources().getBoolean(R.bool.config_show_fullscreen_incall_ui);
         return PreferenceManager.getDefaultSharedPreferences(mContext)
-                .getBoolean(mContext.getString(R.string.pref_no_fullscreen_active_call_ui_key),
-                        true);
+                .getBoolean(mContext.getString(R.string.pref_show_fullscreen_active_call_ui_key),
+                        shouldShowFullScreenUiByDefault);
     }
 }

@@ -14,19 +14,22 @@
  * limitations under the License.
  */
 
-package com.android.car.dialer.livedata;
+package com.android.car.dialer.ui.warning;
 
-import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 
 import com.android.car.dialer.R;
 import com.android.car.dialer.bluetooth.UiBluetoothMonitor;
+import com.android.car.dialer.livedata.BluetoothPairListLiveData;
+import com.android.car.dialer.livedata.BluetoothStateLiveData;
 import com.android.car.dialer.log.L;
+import com.android.car.dialer.servicelocator.DialerServiceLocator;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -40,38 +43,29 @@ public class BluetoothErrorStringLiveData extends MediatorLiveData<String> {
 
     private Context mContext;
 
-    private BluetoothHfpStateLiveData mHfpStateLiveData;
+    private LiveData<List<BluetoothDevice>> mHfpDeviceListLiveData;
     private BluetoothPairListLiveData mPairListLiveData;
     private BluetoothStateLiveData mBluetoothStateLiveData;
 
-    /**
-     * Creates {@link BluetoothErrorStringLiveData}.
-     *
-     * @param context A context for getting strings.
-     */
-    public static BluetoothErrorStringLiveData get(Context context) {
-        return new BluetoothErrorStringLiveData(context);
-    }
-
-    private BluetoothErrorStringLiveData(Context context) {
+    BluetoothErrorStringLiveData(Context context) {
         mContext = context.getApplicationContext();
 
-        if (BluetoothAdapter.getDefaultAdapter() == null) {
+        if (DialerServiceLocator.get().getAndroidFramework().getBluetoothAdapter() == null) {
             setValue(mContext.getString(R.string.bluetooth_unavailable));
         } else {
             setValue(NO_BT_ERROR);
             UiBluetoothMonitor uiBluetoothMonitor = UiBluetoothMonitor.get();
-            mHfpStateLiveData = uiBluetoothMonitor.getHfpStateLiveData();
+            mHfpDeviceListLiveData = uiBluetoothMonitor.getHfpDeviceListLiveData();
             mPairListLiveData = uiBluetoothMonitor.getPairListLiveData();
             mBluetoothStateLiveData = uiBluetoothMonitor.getBluetoothStateLiveData();
 
-            addSource(mHfpStateLiveData, this::onHfpStateChanged);
+            addSource(mHfpDeviceListLiveData, this::onHfpDevicesChanged);
             addSource(mPairListLiveData, this::onPairListChanged);
             addSource(mBluetoothStateLiveData, this::onBluetoothStateChanged);
         }
     }
 
-    private void onHfpStateChanged(Integer state) {
+    private void onHfpDevicesChanged(List<BluetoothDevice> bluetoothDevices) {
         update();
     }
 
@@ -108,8 +102,8 @@ public class BluetoothErrorStringLiveData extends MediatorLiveData<String> {
     }
 
     private boolean isHfpConnected() {
-        Integer hfpState = mHfpStateLiveData.getValue();
-        return hfpState == null || hfpState == BluetoothProfile.STATE_CONNECTED;
+        List<BluetoothDevice> mHfpDeviceList = mHfpDeviceListLiveData.getValue();
+        return mHfpDeviceList != null && !mHfpDeviceList.isEmpty();
     }
 
     private boolean isBluetoothEnabled() {

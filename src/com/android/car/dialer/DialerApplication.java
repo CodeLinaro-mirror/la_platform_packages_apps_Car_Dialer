@@ -18,9 +18,11 @@ package com.android.car.dialer;
 
 import android.app.Application;
 
+import com.android.car.dialer.bluetooth.CallHistoryManager;
 import com.android.car.dialer.bluetooth.UiBluetoothMonitor;
 import com.android.car.dialer.notification.InCallNotificationController;
 import com.android.car.dialer.notification.MissedCallNotificationController;
+import com.android.car.dialer.servicelocator.DialerServiceLocator;
 import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.telephony.common.InMemoryPhoneBook;
 
@@ -29,9 +31,11 @@ public class DialerApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        DialerServiceLocator.get().init(this);
         InMemoryPhoneBook.init(this);
         UiCallManager.init(this);
         UiBluetoothMonitor.init(this);
+        CallHistoryManager.init(this);
         InCallNotificationController.init(this);
         MissedCallNotificationController.init(this);
     }
