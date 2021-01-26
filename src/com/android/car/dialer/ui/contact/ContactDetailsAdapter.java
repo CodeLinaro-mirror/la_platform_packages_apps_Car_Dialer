@@ -31,8 +31,14 @@ import com.android.car.telephony.common.Contact;
 import com.android.car.telephony.common.PhoneNumber;
 import com.android.car.telephony.common.PostalAddress;
 
+import com.google.auto.factory.AutoFactory;
+import com.google.auto.factory.Provided;
+
 import java.util.ArrayList;
 
+import dagger.hilt.android.qualifiers.ActivityContext;
+
+@AutoFactory
 class ContactDetailsAdapter extends RecyclerView.Adapter<ContactDetailsViewHolder> {
 
     private static final String TAG = "CD.ContactDetailsAdapter";
@@ -46,16 +52,19 @@ class ContactDetailsAdapter extends RecyclerView.Adapter<ContactDetailsViewHolde
     }
 
     private final Context mContext;
+    private final ContactDetailsViewHolderFactory mViewHolderFactory;
     private final PhoneNumberPresenter mPhoneNumberPresenter;
     private final ArrayList<Object> mItems = new ArrayList<>();
     private Contact mContact;
 
     ContactDetailsAdapter(
-            @NonNull Context context,
+            @Provided @ActivityContext @NonNull Context context,
+            @Provided ContactDetailsViewHolderFactory viewHolderFactory,
             @Nullable Contact contact,
             @NonNull PhoneNumberPresenter phoneNumberPresenter) {
         super();
         mContext = context;
+        mViewHolderFactory = viewHolderFactory;
         mPhoneNumberPresenter = phoneNumberPresenter;
         setContact(contact);
     }
@@ -121,7 +130,7 @@ class ContactDetailsAdapter extends RecyclerView.Adapter<ContactDetailsViewHolde
 
         View view = LayoutInflater.from(parent.getContext()).inflate(layoutResId, parent,
                 false);
-        return new ContactDetailsViewHolder(view, mPhoneNumberPresenter);
+        return mViewHolderFactory.create(view, mPhoneNumberPresenter);
     }
 
     @Override

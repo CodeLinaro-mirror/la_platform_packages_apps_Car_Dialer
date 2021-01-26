@@ -18,40 +18,32 @@ package com.android.car.dialer.framework;
 
 import static com.android.dx.mockito.inline.extended.ExtendedMockito.mock;
 
-import android.app.Application;
-import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+import dagger.hilt.android.qualifiers.ApplicationContext;
 
 /**
  * A fake implementation of Android framework services provider.
  */
+@Singleton
 public class AndroidFrameworkImpl implements AndroidFramework {
 
-    private static AndroidFrameworkImpl sFakeAndroidFramework;
+    private final Context mContext;
+    private final FakeBluetoothAdapter mFakeBluetoothAdapter;
+    private final AdbBroadcastReceiver mAdbBroadcastReceiver;
 
-    private FakeBluetoothAdapter mFakeBluetoothAdapter;
-    private BluetoothAdapter mSpiedBluetoothAdapter;
-
-    /**
-     * Returns the single instance of {@link AndroidFrameworkImpl}.
-     *
-     * @param applicationContext {@link Application} context for the purposes of
-     * registering the broadcast receiver.
-     */
-    public static AndroidFrameworkImpl get(Application applicationContext) {
-        if (sFakeAndroidFramework == null) {
-            sFakeAndroidFramework = new AndroidFrameworkImpl(applicationContext);
-        }
-        return sFakeAndroidFramework;
-    }
-
-    private AndroidFrameworkImpl(Context applicationContext) {
-        mFakeBluetoothAdapter = new FakeBluetoothAdapter();
-        mSpiedBluetoothAdapter = mFakeBluetoothAdapter.getBluetoothAdapter();
-
-        AdbBroadcastReceiver adbBroadcastReceiver = new AdbBroadcastReceiver();
-        adbBroadcastReceiver.registerReceiver(applicationContext);
+    @Inject
+    AndroidFrameworkImpl(
+            @ApplicationContext Context context,
+            FakeBluetoothAdapter fakeBluetoothAdapter,
+            AdbBroadcastReceiver adbBroadcastReceiver) {
+        mContext = context;
+        mFakeBluetoothAdapter = fakeBluetoothAdapter;
+        mAdbBroadcastReceiver = adbBroadcastReceiver;
     }
 
     /**
@@ -63,7 +55,7 @@ public class AndroidFrameworkImpl implements AndroidFramework {
     }
 
     @Override
-    public BluetoothAdapter getBluetoothAdapter() {
-        return mSpiedBluetoothAdapter;
+    public void start() {
+        mAdbBroadcastReceiver.registerReceiver(mContext);
     }
 }

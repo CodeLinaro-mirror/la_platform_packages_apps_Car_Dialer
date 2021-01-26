@@ -29,11 +29,17 @@ import com.android.car.dialer.ui.common.DialerListBaseFragment;
 import com.android.car.dialer.ui.contact.ContactDetailsFragment;
 import com.android.car.telephony.common.Contact;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+
 /** Fragment for call history page. */
-public class CallHistoryFragment extends DialerListBaseFragment implements
+@AndroidEntryPoint(DialerListBaseFragment.class)
+public class CallHistoryFragment extends Hilt_CallHistoryFragment implements
         CallLogAdapter.OnShowContactDetailListener {
     private static final String CONTACT_DETAIL_FRAGMENT_TAG = "CONTACT_DETAIL_FRAGMENT_TAG";
 
+    @Inject CallLogAdapterFactory mCallLogAdapterFactory;
     private CallLogAdapter mCallLogAdapter;
 
     public static CallHistoryFragment newInstance() {
@@ -47,8 +53,7 @@ public class CallHistoryFragment extends DialerListBaseFragment implements
         // will display immediately upon the view being recreated. If they're not displayed
         // immediately, we won't remember our scroll position.
         if (mCallLogAdapter == null) {
-            mCallLogAdapter = new CallLogAdapter(
-                    getContext(), /* onShowContactDetailListener= */this);
+            mCallLogAdapter = mCallLogAdapterFactory.create(/* onShowContactDetailListener= */this);
         }
         getRecyclerView().setAdapter(mCallLogAdapter);
         getUxrContentLimiter().setAdapter(mCallLogAdapter);

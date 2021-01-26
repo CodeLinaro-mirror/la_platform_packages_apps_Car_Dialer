@@ -16,6 +16,7 @@
 
 package com.android.car.dialer.ui.common;
 
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -28,7 +29,6 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 
 import com.android.car.arch.common.LiveDataFunctions;
-import com.android.car.dialer.bluetooth.UiBluetoothMonitor;
 import com.android.car.dialer.livedata.SharedPreferencesLiveData;
 import com.android.car.dialer.ui.common.entity.ContactSortingInfo;
 import com.android.car.telephony.common.Contact;
@@ -59,15 +59,18 @@ public class ContactResultsLiveData extends
     private final LiveData<String> mSearchQueryLiveData;
     private final LiveData<List<Contact>> mContactListLiveData;
     private final SharedPreferencesLiveData mSortOrderPreferenceLiveData;
+    private String mSearchQuery;
     private boolean mShowOnlyOneEntry;
 
     /**
      * @param searchQueryLiveData represents a list of strings that are used to query the data
+     * @param firstConnectedHfpDevice represents first connected hfp device
      * @param sortOrderPreferenceLiveData has the information on how to order the acquired contacts.
      * @param showOnlyOneEntry determines whether to show only entry per contact.
      */
     public ContactResultsLiveData(Context context,
             LiveData<String> searchQueryLiveData,
+            LiveData<BluetoothDevice> firstConnectedHfpDevice,
             SharedPreferencesLiveData sortOrderPreferenceLiveData,
             boolean showOnlyOneEntry) {
         mContext = context;
@@ -77,7 +80,7 @@ public class ContactResultsLiveData extends
                 context.getContentResolver(), this::onQueryFinished);
 
         mContactListLiveData = LiveDataFunctions.switchMapNonNull(
-                UiBluetoothMonitor.get().getFirstHfpConnectedDevice(),
+                firstConnectedHfpDevice,
                 device -> InMemoryPhoneBook.get()
                         .getContactsLiveDataByAccount(device.getAddress()));
         addSource(mContactListLiveData, this::onContactsChange);
@@ -92,12 +95,15 @@ public class ContactResultsLiveData extends
      * This constructor only allows one entry per contact.
      *
      * @param searchQueryLiveData represents a list of strings that are used to query the data
+     * @param firstConnectedHfpDevice represents first connected hfp device
      * @param sortOrderPreferenceLiveData has the information on how to order the acquired contacts.
      */
     public ContactResultsLiveData(Context context,
             LiveData<String> searchQueryLiveData,
+            LiveData<BluetoothDevice> firstConnectedHfpDevice,
             SharedPreferencesLiveData sortOrderPreferenceLiveData) {
-        this(context, searchQueryLiveData, sortOrderPreferenceLiveData, true);
+        this(context, searchQueryLiveData, firstConnectedHfpDevice, sortOrderPreferenceLiveData,
+                true);
     }
 
     private void onContactsChange(List<Contact> contactList) {
@@ -110,6 +116,7 @@ public class ContactResultsLiveData extends
     }
 
     private void onSearchQueryChanged(String searchQuery) {
+        mSearchQuery = searchQuery;
         if (TextUtils.isEmpty(searchQuery)) {
             mObservableAsyncQuery.stopQuery();
             setValue(Collections.emptyList());
@@ -137,7 +144,7 @@ public class ContactResultsLiveData extends
             String number = cursor.getString(numberIdx);
             List<Contact> lookupResults = InMemoryPhoneBook.get().lookupContactByKey(lookupKey);
             for (Contact contact : lookupResults) {
-                contactResults.add(new ContactResultListItem(contact, number));
+                contactResults.add(new ContactResultListItem(contact, number, mSearchQuery));
             }
         }
 
@@ -189,10 +196,12 @@ public class ContactResultsLiveData extends
     public static class ContactResultListItem {
         private final Contact mContact;
         private final String mNumber;
+        private final String mSearchQuery;
 
-        public ContactResultListItem(Contact contact, String number) {
+        public ContactResultListItem(Contact contact, String number, String searchQuery) {
             mContact = contact;
             mNumber = number;
+            mSearchQuery = searchQuery;
         }
 
         /**
@@ -208,6 +217,13 @@ public class ContactResultsLiveData extends
          */
         public String getNumber() {
             return mNumber;
+        }
+
+        /**
+         * Returns the search query that initiates the search.
+         */
+        public String getSearchQuery() {
+            return mSearchQuery;
         }
     }
 }
