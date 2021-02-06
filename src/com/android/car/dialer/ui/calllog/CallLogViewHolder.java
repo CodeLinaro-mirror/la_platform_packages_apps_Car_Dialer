@@ -34,12 +34,17 @@ import com.android.car.telephony.common.Contact;
 import com.android.car.telephony.common.PhoneCallLog;
 import com.android.car.telephony.common.TelecomUtils;
 
+import com.google.auto.factory.AutoFactory;
+import com.google.auto.factory.Provided;
+
 /**
  * {@link RecyclerView.ViewHolder} for call history list item, responsible for presenting and
  * resetting the UI on recycle.
  */
-public class CallLogViewHolder extends RecyclerView.ViewHolder {
+@AutoFactory
+class CallLogViewHolder extends RecyclerView.ViewHolder {
 
+    private final UiCallManager mUiCallManager;
     private CallLogAdapter.OnShowContactDetailListener mOnShowContactDetailListener;
     private View mPlaceCallView;
     private ImageView mAvatarView;
@@ -50,9 +55,12 @@ public class CallLogViewHolder extends RecyclerView.ViewHolder {
     private View mActionButton;
     private View mDivider;
 
-    public CallLogViewHolder(@NonNull View itemView,
-            CallLogAdapter.OnShowContactDetailListener onShowContactDetailListener) {
+    CallLogViewHolder(
+            @NonNull View itemView,
+            CallLogAdapter.OnShowContactDetailListener onShowContactDetailListener,
+            @Provided UiCallManager uiCallManager) {
         super(itemView);
+        mUiCallManager = uiCallManager;
         mOnShowContactDetailListener = onShowContactDetailListener;
         mPlaceCallView = itemView.findViewById(R.id.call_action_id);
         mAvatarView = itemView.findViewById(R.id.icon);
@@ -99,7 +107,7 @@ public class CallLogViewHolder extends RecyclerView.ViewHolder {
         }
 
         ViewUtils.setOnClickListener(mPlaceCallView,
-                view -> UiCallManager.get().placeCall(uiCallLog.getNumber()));
+                view -> mUiCallManager.placeCall(uiCallLog.getNumber()));
 
         setUpActionButton(contact);
     }

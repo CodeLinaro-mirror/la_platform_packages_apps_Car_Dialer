@@ -32,8 +32,7 @@ import android.telecom.TelecomManager;
 import android.text.TextUtils;
 import android.widget.Toast;
 
-import androidx.annotation.VisibleForTesting;
-
+import com.android.car.dialer.Constants;
 import com.android.car.dialer.R;
 import com.android.car.dialer.bluetooth.BluetoothHeadsetClientProvider;
 import com.android.car.dialer.log.L;
@@ -43,69 +42,36 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+
+import dagger.hilt.android.qualifiers.ApplicationContext;
+
 /**
  * The entry point for all interactions between UI and telecom.
  */
-public class UiCallManager {
+@Singleton
+public final class UiCallManager {
     private static String TAG = "CD.TelecomMgr";
 
-    @VisibleForTesting
-    static final String HFP_CLIENT_CONNECTION_SERVICE_CLASS_NAME
-            = "com.android.bluetooth.hfpclient.connserv.HfpClientConnectionService";
-    private static UiCallManager sUiCallManager;
-
     private Context mContext;
-
-    private TelecomManager mTelecomManager;
+    private final TelecomManager mTelecomManager;
+    private final BluetoothHeadsetClientProvider mBluetoothHeadsetClientProvider;
     private InCallServiceImpl mInCallService;
-    private BluetoothHeadsetClientProvider mBluetoothHeadsetClientProvider;
 
-    /**
-     * Initialized a globally accessible {@link UiCallManager} which can be retrieved by
-     * {@link #get}. If this function is called a second time before calling {@link #tearDown()},
-     * an exception will be thrown.
-     *
-     * @param applicationContext Application context.
-     */
-    public static UiCallManager init(Context applicationContext) {
-        if (sUiCallManager == null) {
-            sUiCallManager = new UiCallManager(applicationContext);
-        } else {
-            throw new IllegalStateException("UiCallManager has been initialized.");
-        }
-        return sUiCallManager;
-    }
-
-    /**
-     * Gets the global {@link UiCallManager} instance. Make sure
-     * {@link #init(Context)} is called before calling this method.
-     */
-    public static UiCallManager get() {
-        if (sUiCallManager == null) {
-            throw new IllegalStateException(
-                    "Call UiCallManager.init(Context) before calling this function");
-        }
-        return sUiCallManager;
-    }
-
-    /**
-     * This is used only for testing
-     */
-    @VisibleForTesting
-    public static void set(UiCallManager uiCallManager) {
-        sUiCallManager = uiCallManager;
-    }
-
-    private UiCallManager(Context context) {
+    @Inject
+    UiCallManager(
+            @ApplicationContext Context context,
+            TelecomManager telecomManager,
+            BluetoothHeadsetClientProvider bluetoothHeadsetClientProvider) {
         L.d(TAG, "SetUp");
         mContext = context;
+        mTelecomManager = telecomManager;
+        mBluetoothHeadsetClientProvider = bluetoothHeadsetClientProvider;
 
-        mTelecomManager = (TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
         Intent intent = new Intent(context, InCallServiceImpl.class);
         intent.setAction(InCallServiceImpl.ACTION_LOCAL_BIND);
         context.bindService(intent, mInCallServiceConnection, Context.BIND_AUTO_CREATE);
-
-        mBluetoothHeadsetClientProvider = BluetoothHeadsetClientProvider.singleton(context);
     }
 
     private final ServiceConnection mInCallServiceConnection = new ServiceConnection() {
@@ -135,7 +101,6 @@ public class UiCallManager {
         }
         // Clear out the mContext reference to avoid memory leak.
         mContext = null;
-        sUiCallManager = null;
     }
 
     public boolean getMuted() {
@@ -195,7 +160,7 @@ public class UiCallManager {
         PhoneAccountHandle phoneAccountHandle =
                 mTelecomManager.getUserSelectedOutgoingPhoneAccount();
         if (phoneAccountHandle != null && phoneAccountHandle.getComponentName() != null) {
-            return HFP_CLIENT_CONNECTION_SERVICE_CLASS_NAME.equals(
+            return Constants.HFP_CLIENT_CONNECTION_SERVICE_CLASS_NAME.equals(
                     phoneAccountHandle.getComponentName().getClassName());
         } else {
             return false;

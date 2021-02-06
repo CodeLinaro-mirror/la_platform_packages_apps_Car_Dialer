@@ -22,18 +22,23 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 
+import com.android.car.dialer.ComponentFetcher;
 import com.android.car.dialer.bluetooth.UiBluetoothMonitor;
+import com.android.car.dialer.inject.ViewModelComponent;
+
+import javax.inject.Inject;
 
 /** View model for {@link NoHfpFragment} */
 public class NoHfpViewModel extends AndroidViewModel {
 
+    @Inject UiBluetoothMonitor mUiBluetoothMonitor;
+    @Inject BluetoothErrorStringLiveData mBluetoothErrorStringLiveData;
     private final LiveData<Boolean> mHasHfpDeviceConnectedLiveData;
-    private final LiveData<String> mBluetoothErrorStringLiveData;
 
     public NoHfpViewModel(@NonNull Application application) {
         super(application);
-        mHasHfpDeviceConnectedLiveData = UiBluetoothMonitor.get().hasHfpDeviceConnected();
-        mBluetoothErrorStringLiveData = new BluetoothErrorStringLiveData(application);
+        ComponentFetcher.from(application, ViewModelComponent.class).inject(this);
+        mHasHfpDeviceConnectedLiveData = mUiBluetoothMonitor.hasHfpDeviceConnected();
     }
 
     public LiveData<String> getBluetoothErrorStringLiveData() {

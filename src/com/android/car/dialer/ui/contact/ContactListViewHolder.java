@@ -33,13 +33,18 @@ import com.android.car.telephony.common.Contact;
 import com.android.car.telephony.common.PhoneNumber;
 import com.android.car.telephony.common.TelecomUtils;
 
+import com.google.auto.factory.AutoFactory;
+import com.google.auto.factory.Provided;
+
 import java.util.List;
 
 /**
  * {@link RecyclerView.ViewHolder} for contact list item, responsible for presenting and resetting
  * the UI on recycle.
  */
-public class ContactListViewHolder extends RecyclerView.ViewHolder {
+@AutoFactory
+class ContactListViewHolder extends RecyclerView.ViewHolder {
+    private final UiCallManager mUiCallManager;
     private final ContactListAdapter.OnShowContactDetailListener mOnShowContactDetailListener;
     private final TextView mHeaderView;
     private final ImageView mAvatarView;
@@ -48,9 +53,12 @@ public class ContactListViewHolder extends RecyclerView.ViewHolder {
     private final View mShowContactDetailView;
     private final View mCallActionView;
 
-    public ContactListViewHolder(@NonNull View itemView,
-            ContactListAdapter.OnShowContactDetailListener onShowContactDetailListener) {
+    ContactListViewHolder(
+            @NonNull View itemView,
+            ContactListAdapter.OnShowContactDetailListener onShowContactDetailListener,
+            @Provided UiCallManager uiCallManager) {
         super(itemView);
+        mUiCallManager = uiCallManager;
         mOnShowContactDetailListener = onShowContactDetailListener;
         mHeaderView = itemView.findViewById(R.id.header);
         mAvatarView = itemView.findViewById(R.id.icon);
@@ -115,7 +123,7 @@ public class ContactListViewHolder extends RecyclerView.ViewHolder {
         if (hasPhoneNumbers) {
             ViewUtils.setOnClickListener(mCallActionView, view -> {
                 DialerUtils.promptForPrimaryNumber(itemView.getContext(), contact,
-                        (phoneNumber, always) -> UiCallManager.get().placeCall(
+                        (phoneNumber, always) -> mUiCallManager.placeCall(
                                 phoneNumber.getRawNumber()));
             });
         } else {

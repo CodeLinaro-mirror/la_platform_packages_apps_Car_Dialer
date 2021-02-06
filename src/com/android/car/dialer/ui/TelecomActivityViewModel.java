@@ -30,18 +30,25 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.android.car.dialer.ComponentFetcher;
 import com.android.car.dialer.bluetooth.UiBluetoothMonitor;
+import com.android.car.dialer.inject.ViewModelComponent;
 import com.android.car.dialer.log.L;
 import com.android.car.dialer.telecom.LocalCallHandler;
 import com.android.car.dialer.ui.common.SingleLiveEvent;
 
 import java.util.List;
 
+import javax.inject.Inject;
+
 /**
  * View model for {@link TelecomActivity}.
  */
 public class TelecomActivityViewModel extends AndroidViewModel {
     private static final String TAG = "CD.TelecomActivityViewModel";
+
+    @Inject UiBluetoothMonitor mUiBluetoothMonitor;
+    @Inject LocalCallHandler mLocalCallHandler;
 
     private final Context mApplicationContext;
     private RefreshUiEvent mRefreshTabsLiveData;
@@ -51,23 +58,22 @@ public class TelecomActivityViewModel extends AndroidViewModel {
 
     private final LiveData<Boolean> mHasHfpDeviceConnectedLiveData;
 
-    private final LocalCallHandler mLocalCallHandler;
 
     public TelecomActivityViewModel(Application application) {
         super(application);
+        ComponentFetcher.from(application, ViewModelComponent.class).inject(this);
         mApplicationContext = application.getApplicationContext();
 
         mToolbarTitleMode = new MediatorLiveData<>();
-        mToolbarTitleLiveData = new ToolbarTitleLiveData(mApplicationContext, mToolbarTitleMode);
+        mToolbarTitleLiveData = new ToolbarTitleLiveData(mApplicationContext, mToolbarTitleMode,
+                mUiBluetoothMonitor.getHfpDeviceListLiveData());
 
         if (BluetoothAdapter.getDefaultAdapter() != null) {
             mRefreshTabsLiveData = new RefreshUiEvent(
-                    UiBluetoothMonitor.get().getHfpDeviceListLiveData());
+                    mUiBluetoothMonitor.getHfpDeviceListLiveData());
         }
 
-        mHasHfpDeviceConnectedLiveData = UiBluetoothMonitor.get().hasHfpDeviceConnected();
-
-        mLocalCallHandler = new LocalCallHandler(mApplicationContext);
+        mHasHfpDeviceConnectedLiveData = mUiBluetoothMonitor.hasHfpDeviceConnected();
     }
 
     /**

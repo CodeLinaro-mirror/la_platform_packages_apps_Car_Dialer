@@ -29,6 +29,7 @@ import com.android.car.dialer.R;
 import com.android.car.dialer.telecom.UiCallManager;
 import com.android.car.dialer.ui.common.ContactResultsLiveData;
 import com.android.car.dialer.ui.common.DialerUtils;
+import com.android.car.dialer.ui.common.QueryStyle;
 import com.android.car.dialer.ui.view.ContactAvatarOutputlineProvider;
 import com.android.car.telephony.common.Contact;
 import com.android.car.telephony.common.TelecomUtils;
@@ -89,17 +90,21 @@ public class ContactResultViewHolder extends RecyclerView.ViewHolder {
      * Populates the view that is represented by this ViewHolder with the information in the
      * provided {@link Contact}.
      */
-    public void bindTypeDownResult(ContactResultsLiveData.ContactResultListItem contactResult,
+    public void bindTypeDownResult(
+            ContactResultsLiveData.ContactResultListItem contactResult,
+            UiCallManager uiCallManager,
             Integer sortMethod) {
         Contact contact = contactResult.getContact();
-        String number = contactResult.getNumber();
 
-        ViewUtils.setText(mContactNumber, number);
+        QueryStyle queryStyle = new QueryStyle(mContext, R.style.TextAppearance_TypeDownListSpan);
+        ViewUtils.setText(mContactNumber,
+                queryStyle.getStringWithQueryInSpecialStyle(contactResult.getNumber(),
+                        contactResult.getSearchQuery()));
         ViewUtils.setText(mContactName,
                 TelecomUtils.isSortByFirstName(sortMethod) ? contact.getDisplayName()
                         : contact.getDisplayNameAlt());
         mContactCard.setOnClickListener(
-                v -> UiCallManager.get().placeCall(mContactNumber.getText().toString()));
+                v -> uiCallManager.placeCall(mContactNumber.getText().toString()));
         TelecomUtils.setContactBitmapAsync(mContext, mContactPicture, contact, sortMethod);
     }
 

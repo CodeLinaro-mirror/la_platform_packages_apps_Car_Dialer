@@ -42,15 +42,22 @@ import com.android.car.telephony.common.PostalAddress;
 import com.android.car.telephony.common.TelecomUtils;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.request.RequestListener;
 import com.bumptech.glide.request.RequestOptions;
-import com.bumptech.glide.request.target.SimpleTarget;
-import com.bumptech.glide.request.transition.Transition;
+import com.bumptech.glide.request.target.Target;
+import com.google.auto.factory.AutoFactory;
+import com.google.auto.factory.Provided;
 
 /**
  * ViewHolder for {@link ContactDetailsFragment}.
  */
+@AutoFactory
 class ContactDetailsViewHolder extends RecyclerView.ViewHolder {
     private static final String TAG = "CD.ContactDetailsVH";
+
+    private final UiCallManager mUiCallManager;
 
     // Applies to all
     @NonNull
@@ -83,8 +90,10 @@ class ContactDetailsViewHolder extends RecyclerView.ViewHolder {
 
     ContactDetailsViewHolder(
             View v,
-            @NonNull ContactDetailsAdapter.PhoneNumberPresenter phoneNumberPresenter) {
+            @NonNull ContactDetailsAdapter.PhoneNumberPresenter phoneNumberPresenter,
+            @Provided UiCallManager uiCallManager) {
         super(v);
+        mUiCallManager = uiCallManager;
         mCallActionView = v.findViewById(R.id.call_action_id);
         mFavoriteActionView = v.findViewById(R.id.contact_details_favorite_button);
         mAddressView = v.findViewById(R.id.address_button);
@@ -126,32 +135,30 @@ class ContactDetailsViewHolder extends RecyclerView.ViewHolder {
         Glide.with(context)
                 .load(contact.getAvatarUri())
                 .apply(new RequestOptions().centerCrop().error(letterTile))
-                .into(new SimpleTarget<Drawable>() {
+                .listener(new RequestListener<Drawable>() {
                     @Override
-                    public void onResourceReady(Drawable resource,
-                            Transition<? super Drawable> glideAnimation) {
-                        if (mAvatarView != null) {
-                            mAvatarView.setImageDrawable(resource);
-                        }
-                        if (mBackgroundImageView != null) {
-                            mBackgroundImageView.setAlpha(context.getResources().getFloat(
-                                    R.dimen.config_background_image_alpha));
-                            mBackgroundImageView.setBackgroundDrawable(resource, false);
-                        }
-                    }
-
-                    @Override
-                    public void onLoadFailed(Drawable errorDrawable) {
-                        if (mAvatarView != null) {
-                            mAvatarView.setImageDrawable(letterTile);
-                        }
+                    public boolean onLoadFailed(@Nullable GlideException e, Object model,
+                            Target<Drawable> target, boolean isFirstResource) {
                         if (mBackgroundImageView != null) {
                             mBackgroundImageView.setAlpha(context.getResources().getFloat(
                                     R.dimen.config_background_image_error_alpha));
                             mBackgroundImageView.setBackgroundColor(letterTile.getColor());
                         }
+                        return false;
                     }
-                });
+
+                    @Override
+                    public boolean onResourceReady(Drawable resource, Object model,
+                            Target<Drawable> target, DataSource dataSource,
+                            boolean isFirstResource) {
+                        if (mBackgroundImageView != null) {
+                            mBackgroundImageView.setAlpha(context.getResources().getFloat(
+                                    R.dimen.config_background_image_alpha));
+                            mBackgroundImageView.setBackgroundDrawable(resource, false);
+                        }
+                        return false;
+                    }
+                }).into(mAvatarView);
     }
 
     public void bind(Context context, Contact contact, PhoneNumber phoneNumber) {
@@ -170,7 +177,7 @@ class ContactDetailsViewHolder extends RecyclerView.ViewHolder {
         }
 
         mCallActionView.setOnClickListener(
-                v -> UiCallManager.get().placeCall(phoneNumber.getRawNumber()));
+                v -> mUiCallManager.placeCall(phoneNumber.getRawNumber()));
 
         if (phoneNumber.isFavorite() || !contact.isStarred()) {
             // If the phone number is marked as favorite locally, enable the action button to
