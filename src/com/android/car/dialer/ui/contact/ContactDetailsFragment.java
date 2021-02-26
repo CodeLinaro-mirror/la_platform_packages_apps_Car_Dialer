@@ -45,12 +45,17 @@ import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.request.target.SimpleTarget;
 import com.bumptech.glide.request.transition.Transition;
 
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+
 /**
  * A fragment that shows the name of the contact, the photo and all listed phone numbers. It is
  * primarily used to respond to the results of search queries but supplyig it with the content://
  * uri of a contact should work too.
  */
-public class ContactDetailsFragment extends DialerListBaseFragment implements
+@AndroidEntryPoint(DialerListBaseFragment.class)
+public class ContactDetailsFragment extends Hilt_ContactDetailsFragment implements
         ContactDetailsAdapter.PhoneNumberPresenter {
     private static final String TAG = "CD.ContactDetailsFragment";
     public static final String FRAGMENT_TAG = "CONTACT_DETAIL_FRAGMENT_TAG";
@@ -58,6 +63,7 @@ public class ContactDetailsFragment extends DialerListBaseFragment implements
     // Key to load and save the contact entity instance.
     private static final String KEY_CONTACT_ENTITY = "ContactEntity";
 
+    @Inject ContactDetailsAdapterFactory mContactDetailsAdapterFactory;
     private Contact mContact;
     private LiveData<FutureData<Contact>> mContactDetailsLiveData;
     private ContactDetailsViewModel mContactDetailsViewModel;
@@ -97,8 +103,8 @@ public class ContactDetailsFragment extends DialerListBaseFragment implements
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        ContactDetailsAdapter contactDetailsAdapter = new ContactDetailsAdapter(getContext(),
-                mContact, this);
+        ContactDetailsAdapter contactDetailsAdapter = mContactDetailsAdapterFactory.create(mContact,
+                this);
         getRecyclerView().setAdapter(contactDetailsAdapter);
         mContactDetailsLiveData.observe(this, contact -> {
             if (contact.isLoading()) {

@@ -83,7 +83,6 @@ public class CallHistoryFragmentTest {
         MockitoAnnotations.initMocks(this);
 
         InMemoryPhoneBook.init(RuntimeEnvironment.application);
-        UiCallManager.set(mMockUiCallManager);
 
         PhoneCallLog.Record record1 = new PhoneCallLog.Record(TIME_STAMP_1,
                 CallHistoryLiveData.CallType.INCOMING_TYPE);
@@ -102,6 +101,10 @@ public class CallHistoryFragmentTest {
         mCallHistoryFragment = CallHistoryFragment.newInstance();
         FragmentTestActivity mFragmentTestActivity = Robolectric.buildActivity(
                 FragmentTestActivity.class).create().resume().get();
+        CallLogViewHolderFactory viewHolderFactory = new CallLogViewHolderFactory(
+                () -> mMockUiCallManager);
+        mCallHistoryFragment.mCallLogAdapterFactory = new CallLogAdapterFactory(
+                () -> mFragmentTestActivity, () -> viewHolderFactory);
         mFragmentTestActivity.setFragment(mCallHistoryFragment);
 
         CarUiRecyclerView recyclerView = mCallHistoryFragment.getView()
@@ -114,7 +117,6 @@ public class CallHistoryFragmentTest {
 
     @After
     public void tearDown() {
-        UiCallManager.set(null);
         InMemoryPhoneBook.tearDown();
     }
 

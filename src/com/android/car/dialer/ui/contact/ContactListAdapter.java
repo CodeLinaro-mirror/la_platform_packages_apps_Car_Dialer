@@ -32,13 +32,19 @@ import com.android.car.telephony.common.Contact;
 import com.android.car.telephony.common.TelecomUtils;
 import com.android.car.ui.recyclerview.ContentLimitingAdapter;
 
+import com.google.auto.factory.AutoFactory;
+import com.google.auto.factory.Provided;
+
 import java.util.ArrayList;
 import java.util.List;
+
+import dagger.hilt.android.qualifiers.ActivityContext;
 
 /**
  * Adapter for contact list.
  */
-public class ContactListAdapter extends ContentLimitingAdapter<ContactListViewHolder> {
+@AutoFactory
+class ContactListAdapter extends ContentLimitingAdapter<ContactListViewHolder> {
     private static final String TAG = "CD.ContactListAdapter";
 
     interface OnShowContactDetailListener {
@@ -46,6 +52,7 @@ public class ContactListAdapter extends ContentLimitingAdapter<ContactListViewHo
     }
 
     private final Context mContext;
+    private final ContactListViewHolderFactory mViewHolderFactory;
     private final List<Contact> mContactList = new ArrayList<>();
     private final OnShowContactDetailListener mOnShowContactDetailListener;
 
@@ -53,9 +60,12 @@ public class ContactListAdapter extends ContentLimitingAdapter<ContactListViewHo
     private LinearLayoutManager mLinearLayoutManager;
     private int mLimitingAnchorIndex = 0;
 
-    public ContactListAdapter(Context context,
+    ContactListAdapter(
+            @Provided @ActivityContext Context context,
+            @Provided ContactListViewHolderFactory viewHolderFactory,
             OnShowContactDetailListener onShowContactDetailListener) {
         mContext = context;
+        mViewHolderFactory = viewHolderFactory;
         mOnShowContactDetailListener = onShowContactDetailListener;
     }
 
@@ -84,7 +94,7 @@ public class ContactListAdapter extends ContentLimitingAdapter<ContactListViewHo
     public ContactListViewHolder onCreateViewHolderImpl(@NonNull ViewGroup parent, int viewType) {
         View itemView = LayoutInflater.from(mContext).inflate(R.layout.contact_list_item, parent,
                 false);
-        return new ContactListViewHolder(itemView, mOnShowContactDetailListener);
+        return  mViewHolderFactory.create(itemView, mOnShowContactDetailListener);
     }
 
     @Override
