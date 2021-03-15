@@ -16,34 +16,36 @@
 
 package com.android.car.dialer.livedata;
 
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothHeadsetClient;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.telecom.PhoneAccountHandle;
 
 import androidx.lifecycle.MediatorLiveData;
 
-import com.android.car.dialer.bluetooth.UiBluetoothMonitor;
+import com.android.car.dialer.bluetooth.BluetoothHeadsetClientProvider;
 import com.android.car.dialer.log.L;
 import com.android.car.dialer.telecom.UiCallManager;
+import com.android.car.telephony.common.CallDetail;
 
-import java.util.List;
-
-import javax.inject.Inject;
+import com.google.auto.factory.AutoFactory;
+import com.google.auto.factory.Provided;
 
 import dagger.hilt.android.qualifiers.ApplicationContext;
 
 /**
  * Provides the current connecting audio route.
  */
+@AutoFactory
 public class AudioRouteLiveData extends MediatorLiveData<Integer> {
     private static final String TAG = "CD.AudioRouteLiveData";
 
     private final Context mContext;
     private final IntentFilter mAudioRouteChangeFilter;
     private final UiCallManager mUiCallManager;
+    private final CallDetailLiveData mPrimaryCallDetailLiveData;
 
     private final BroadcastReceiver mAudioRouteChangeReceiver = new BroadcastReceiver() {
         @Override
@@ -52,17 +54,21 @@ public class AudioRouteLiveData extends MediatorLiveData<Integer> {
         }
     };
 
-    @Inject
     public AudioRouteLiveData(
-            @ApplicationContext Context context,
-            UiBluetoothMonitor bluetoothMonitor,
-            UiCallManager callManager) {
+            @Provided @ApplicationContext Context context,
+            CallDetailLiveData primaryCallDetailLiveData,
+            @Provided BluetoothHeadsetClientProvider bluetoothHeadsetClientProvider,
+            @Provided UiCallManager callManager) {
         mContext = context;
         mAudioRouteChangeFilter =
                 new IntentFilter(BluetoothHeadsetClient.ACTION_AUDIO_STATE_CHANGED);
         mUiCallManager = callManager;
+        mPrimaryCallDetailLiveData = primaryCallDetailLiveData;
+
         // TODO: introduce a new AudioStateChanged listener for listening to the audio state change.
-        addSource(bluetoothMonitor.getHfpDeviceListLiveData(), this::onHfpDeviceListChange);
+        addSource(bluetoothHeadsetClientProvider.isBluetoothHeadsetClientConnected(),
+                connected -> updateAudioRoute());
+        addSource(mPrimaryCallDetailLiveData, this::updateOngoingCallAudioRoute);
     }
 
     @Override
@@ -79,14 +85,20 @@ public class AudioRouteLiveData extends MediatorLiveData<Integer> {
     }
 
     private void updateAudioRoute() {
-        int audioRoute = mUiCallManager.getAudioRoute();
+        CallDetail primaryCallDetail = mPrimaryCallDetailLiveData.getValue();
+        updateOngoingCallAudioRoute(primaryCallDetail);
+    }
+
+    private void updateOngoingCallAudioRoute(CallDetail callDetail) {
+        if (callDetail == null) {
+            // Phone call might have disconnected, no action.
+            return;
+        }
+        PhoneAccountHandle phoneAccountHandle = callDetail.getPhoneAccountHandle();
+        int audioRoute = mUiCallManager.getAudioRoute(phoneAccountHandle);
         if (getValue() == null || audioRoute != getValue()) {
             L.d(TAG, "updateAudioRoute to %s", audioRoute);
             setValue(audioRoute);
         }
-    }
-
-    private void onHfpDeviceListChange(List<BluetoothDevice> bluetoothDeviceList) {
-        updateAudioRoute();
     }
 }
