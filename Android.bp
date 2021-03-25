@@ -13,6 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 android_app {
     name: "CarDialerApp",
 
@@ -157,7 +161,7 @@ android_app {
 
     srcs: ["src/**/*.java", "framework/emulator/src/**/*.java"],
 
-    exclude_srcs: ["src/com/android/car/dialer/DialerModules.java"],
+    exclude_srcs: ["src/com/android/car/dialer/inject/SingleHfpModule.java"],
 
     resource_dirs: ["res"],
 
