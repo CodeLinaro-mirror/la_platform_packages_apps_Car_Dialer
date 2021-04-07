@@ -24,12 +24,19 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Transformations;
 import androidx.preference.PreferenceManager;
 
+import com.android.car.arch.common.LiveDataFunctions;
 import com.android.car.dialer.bluetooth.UiBluetoothMonitor;
-import com.android.car.dialer.inject.Qualifiers;
+import com.android.car.dialer.livedata.CallHistoryLiveData;
+import com.android.car.dialer.storage.FavoriteNumberRepository;
+import com.android.car.dialer.ui.favorite.BluetoothFavoriteContactsLiveDataFactory;
+import com.android.car.telephony.common.Contact;
+import com.android.car.telephony.common.InMemoryPhoneBook;
+import com.android.car.telephony.common.PhoneCallLog;
 
 import java.util.List;
 import java.util.Set;
 
+import javax.inject.Named;
 import javax.inject.Singleton;
 
 import dagger.Module;
@@ -58,7 +65,7 @@ public final class DialerModules {
     @Module
     public static final class SingleHfpModule {
         @Singleton
-        @Qualifiers.Bluetooth
+        @Named("Bluetooth")
         @Provides
         static LiveData<Integer> provideBluetoothStateLiveData(
                 UiBluetoothMonitor uiBluetoothMonitor) {
@@ -66,7 +73,7 @@ public final class DialerModules {
         }
 
         @Singleton
-        @Qualifiers.Bluetooth
+        @Named("Bluetooth")
         @Provides
         static LiveData<Set<BluetoothDevice>> provideBluetoothPairListLiveData(
                 UiBluetoothMonitor uiBluetoothMonitor) {
@@ -74,7 +81,7 @@ public final class DialerModules {
         }
 
         @Singleton
-        @Qualifiers.Hfp
+        @Named("Hfp")
         @Provides
         static LiveData<List<BluetoothDevice>> provideHfpDeviceListLiveData(
                 UiBluetoothMonitor uiBluetoothMonitor) {
@@ -82,10 +89,10 @@ public final class DialerModules {
         }
 
         @Singleton
-        @Qualifiers.Hfp
+        @Named("Hfp")
         @Provides
         static LiveData<BluetoothDevice> provideCurrentHfpDeviceLiveData(
-                @Qualifiers.Hfp LiveData<List<BluetoothDevice>> hfpDeviceListLiveData) {
+                @Named("Hfp") LiveData<List<BluetoothDevice>> hfpDeviceListLiveData) {
             return Transformations.map(hfpDeviceListLiveData, (devices) ->
                     devices != null && !devices.isEmpty()
                             ? devices.get(0)
@@ -93,13 +100,48 @@ public final class DialerModules {
         }
 
         @Singleton
-        @Qualifiers.Hfp
+        @Named("Hfp")
         @Provides
         static LiveData<Boolean> hasHfpDeviceConnectedLiveData(
-                @Qualifiers.Hfp LiveData<List<BluetoothDevice>> hfpDeviceListLiveData) {
+                @Named("Hfp") LiveData<List<BluetoothDevice>> hfpDeviceListLiveData) {
             return Transformations.map(hfpDeviceListLiveData,
                     devices -> devices != null && !devices.isEmpty());
         }
+
+        @Provides
+        static LiveData<List<PhoneCallLog>> provideCallHistoryLiveData(
+                @ApplicationContext Context context,
+                @Named("Hfp") LiveData<BluetoothDevice> currentHfpDevice) {
+            return LiveDataFunctions.switchMapNonNull(currentHfpDevice,
+                    device -> CallHistoryLiveData.newInstance(context, device.getAddress()));
+        }
+
+        @Provides
+        static LiveData<List<Contact>> provideContactListLiveData(
+                @Named("Hfp") LiveData<BluetoothDevice> currentHfpDevice) {
+            return LiveDataFunctions.switchMapNonNull(currentHfpDevice,
+                    device -> InMemoryPhoneBook.get().getContactsLiveDataByAccount(
+                            device.getAddress()));
+        }
+
+        @Provides
+        @Named("BluetoothFavorite")
+        static LiveData<List<Contact>> provideBluetoothFavoriteContactListLiveData(
+                @Named("Hfp") LiveData<BluetoothDevice> currentHfpDevice,
+                BluetoothFavoriteContactsLiveDataFactory bluetoothFavoriteContactsLiveDataFactory) {
+            return LiveDataFunctions.switchMapNonNull(currentHfpDevice,
+                    device -> bluetoothFavoriteContactsLiveDataFactory.create(device.getAddress()));
+        }
+
+        @Provides
+        @Named("LocalFavorite")
+        static LiveData<List<Contact>> provideLocalFavoriteContactListLiveData(
+                @Named("Hfp") LiveData<BluetoothDevice> currentHfpDevice,
+                FavoriteNumberRepository favoriteNumberRepository) {
+            return LiveDataFunctions.switchMapNonNull(currentHfpDevice,
+                    device -> favoriteNumberRepository.getFavoriteContacts(device.getAddress()));
+        }
+
     }
 
     /** Do not initialize. */
