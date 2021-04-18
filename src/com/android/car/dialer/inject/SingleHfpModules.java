@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package com.android.car.dialer;
+package com.android.car.dialer.inject;
 
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
-import android.content.SharedPreferences;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Transformations;
-import androidx.preference.PreferenceManager;
+import androidx.lifecycle.ViewModel;
 
 import com.android.car.arch.common.LiveDataFunctions;
+import com.android.car.dialer.bluetooth.PhoneAccountManager;
 import com.android.car.dialer.bluetooth.UiBluetoothMonitor;
 import com.android.car.dialer.livedata.CallHistoryLiveData;
 import com.android.car.dialer.storage.FavoriteNumberRepository;
@@ -42,28 +42,17 @@ import javax.inject.Singleton;
 import dagger.Module;
 import dagger.Provides;
 import dagger.hilt.InstallIn;
+import dagger.hilt.android.components.ActivityRetainedComponent;
 import dagger.hilt.android.qualifiers.ApplicationContext;
+import dagger.hilt.android.scopes.ActivityRetainedScoped;
 import dagger.hilt.components.SingletonComponent;
 
-/** Dialer modules. */
-public final class DialerModules {
-
-    /** Application level module. */
+/** Module providing dependencies for single hfp connection. */
+public final class SingleHfpModules {
+    /** Single hfp application level dependencies. */
     @InstallIn(SingletonComponent.class)
     @Module
-    public static final class BaseModule {
-
-        @Singleton
-        @Provides
-        static SharedPreferences provideSharedPreferences(@ApplicationContext Context context) {
-            return PreferenceManager.getDefaultSharedPreferences(context);
-        }
-    }
-
-    /** Module providing dependencies for single hfp connection. */
-    @InstallIn(SingletonComponent.class)
-    @Module
-    public static final class SingleHfpModule {
+    public static final class AppModule {
         @Singleton
         @Named("Bluetooth")
         @Provides
@@ -92,22 +81,20 @@ public final class DialerModules {
         @Named("Hfp")
         @Provides
         static LiveData<BluetoothDevice> provideCurrentHfpDeviceLiveData(
-                @Named("Hfp") LiveData<List<BluetoothDevice>> hfpDeviceListLiveData) {
-            return Transformations.map(hfpDeviceListLiveData, (devices) ->
-                    devices != null && !devices.isEmpty()
-                            ? devices.get(0)
-                            : null);
+                @Named("Hfp") LiveData<List<BluetoothDevice>> hfpDeviceListLiveData,
+                PhoneAccountManager phoneAccountManager) {
+            LiveData<BluetoothDevice> currentHfpDevice = Transformations.map(hfpDeviceListLiveData,
+                    devices -> devices != null && !devices.isEmpty() ? devices.get(0) : null);
+            currentHfpDevice.observeForever(
+                    device -> phoneAccountManager.setUserSelectedOutgoingDevice(device));
+            return currentHfpDevice;
         }
 
+        /**
+         * This {@link LiveData} for call logs will be always be active. See {@link
+         * com.android.car.dialer.bluetooth.CallHistoryManager}.
+         */
         @Singleton
-        @Named("Hfp")
-        @Provides
-        static LiveData<Boolean> hasHfpDeviceConnectedLiveData(
-                @Named("Hfp") LiveData<List<BluetoothDevice>> hfpDeviceListLiveData) {
-            return Transformations.map(hfpDeviceListLiveData,
-                    devices -> devices != null && !devices.isEmpty());
-        }
-
         @Provides
         static LiveData<List<PhoneCallLog>> provideCallHistoryLiveData(
                 @ApplicationContext Context context,
@@ -116,6 +103,7 @@ public final class DialerModules {
                     device -> CallHistoryLiveData.newInstance(context, device.getAddress()));
         }
 
+        @Singleton
         @Provides
         static LiveData<List<Contact>> provideContactListLiveData(
                 @Named("Hfp") LiveData<BluetoothDevice> currentHfpDevice) {
@@ -123,7 +111,22 @@ public final class DialerModules {
                     device -> InMemoryPhoneBook.get().getContactsLiveDataByAccount(
                             device.getAddress()));
         }
+    }
 
+    /** {@link LiveData} instances that are shared across various {@link ViewModel}s. */
+    @InstallIn(ActivityRetainedComponent.class)
+    @Module
+    public static final class ActivityRetainedModule {
+        @ActivityRetainedScoped
+        @Named("Hfp")
+        @Provides
+        static LiveData<Boolean> hasHfpDeviceConnectedLiveData(
+                @Named("Hfp") LiveData<List<BluetoothDevice>> hfpDeviceListLiveData) {
+            return Transformations.map(hfpDeviceListLiveData,
+                    devices -> devices != null && !devices.isEmpty());
+        }
+
+        @ActivityRetainedScoped
         @Provides
         @Named("BluetoothFavorite")
         static LiveData<List<Contact>> provideBluetoothFavoriteContactListLiveData(
@@ -133,6 +136,7 @@ public final class DialerModules {
                     device -> bluetoothFavoriteContactsLiveDataFactory.create(device.getAddress()));
         }
 
+        @ActivityRetainedScoped
         @Provides
         @Named("LocalFavorite")
         static LiveData<List<Contact>> provideLocalFavoriteContactListLiveData(
@@ -141,10 +145,6 @@ public final class DialerModules {
             return LiveDataFunctions.switchMapNonNull(currentHfpDevice,
                     device -> favoriteNumberRepository.getFavoriteContacts(device.getAddress()));
         }
-
     }
 
-    /** Do not initialize. */
-    private DialerModules() {
-    }
 }

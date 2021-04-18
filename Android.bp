@@ -13,6 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 android_app {
     name: "CarDialerApp",
 
@@ -33,7 +37,6 @@ android_app {
         "car-apps-common",
         "car-arch-common",
         "car-telephony-common",
-        "car-theme-lib",
         "car-ui-lib",
         "car-uxr-client-lib",
         "auto_factory_annotations",
@@ -98,7 +101,6 @@ android_app {
         "car-apps-common",
         "car-arch-common",
         "car-telephony-common",
-        "car-theme-lib",
         "car-ui-lib",
         "car-uxr-client-lib",
         "auto_factory_annotations",
@@ -157,7 +159,7 @@ android_app {
 
     srcs: ["src/**/*.java", "framework/emulator/src/**/*.java"],
 
-    exclude_srcs: ["src/com/android/car/dialer/DialerModules.java"],
+    exclude_srcs: ["src/com/android/car/dialer/inject/SingleHfpModules.java"],
 
     resource_dirs: ["res"],
 
@@ -174,7 +176,6 @@ android_app {
         "car-apps-common",
         "car-arch-common",
         "car-telephony-common",
-        "car-theme-lib",
         "car-ui-lib",
         "car-uxr-client-lib",
         "auto_factory_annotations",
