@@ -313,8 +313,6 @@ public class InCallViewModel extends AndroidViewModel {
             return;
         }
 
-        activeCallList.sort(mCallComparator);
-
         List<Call> conferenceList = new ArrayList<>();
         List<Call> ongoingCallList = new ArrayList<>();
         for (Call call : activeCallList) {
@@ -325,6 +323,7 @@ public class InCallViewModel extends AndroidViewModel {
                 ongoingCallList.add(call);
             }
         }
+        ongoingCallList.sort(mCallComparator);
 
         L.d(TAG, "size:" + activeCallList.size() + " activeList" + activeCallList);
         L.d(TAG, "conf:%s" + conferenceList, conferenceList.size());
