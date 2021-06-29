@@ -131,6 +131,8 @@ public class OnGoingCallControllerBarFragment extends Hilt_OnGoingCallController
         mInCallViewModel.getPrimaryCallState().observe(this, this::setCallState);
         mPrimaryCallLiveData = mInCallViewModel.getPrimaryCall();
         mPrimaryCallDetailLiveData = mInCallViewModel.getPrimaryCallDetail();
+        mPrimaryCallDetailLiveData.observe(this,
+                primaryCallDetail -> mAudioRouteButton.setEnabled(primaryCallDetail != null));
         mOngoingCallPairLiveData = mInCallViewModel.getOngoingCallPair();
 
         mOngoingCallListLiveData = mInCallViewModel.getOngoingCallList();
@@ -204,16 +206,12 @@ public class OnGoingCallControllerBarFragment extends Hilt_OnGoingCallController
         mAudioRouteView = fragmentView.findViewById(R.id.voice_channel_view);
         mAudioRouteButton = fragmentView.findViewById(R.id.voice_channel_button);
         mAudioRouteText = fragmentView.findViewById(R.id.voice_channel_text);
-        mPrimaryCallDetailLiveData.observe(this,
-                primaryCallDetail -> mAudioRouteView.setEnabled(primaryCallDetail != null));
         mAudioRoutes.observe(this, audioRoutes -> {
             if (audioRoutes.size() > 1) {
                 mAudioRouteView.setOnClickListener((v) -> {
                     mAudioRouteView.setActivated(true);
                     mAudioRouteSelectionDialog.show();
                 });
-            } else {
-                mAudioRouteView.setClickable(false);
             }
         });
 

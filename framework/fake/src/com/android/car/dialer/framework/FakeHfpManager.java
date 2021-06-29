@@ -18,8 +18,10 @@ package com.android.car.dialer.framework;
 
 import android.bluetooth.BluetoothDevice;
 
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.android.car.arch.common.LiveDataFunctions;
 import com.android.car.dialer.framework.testdata.CallLogDataHandler;
 import com.android.car.dialer.framework.testdata.ContactDataHandler;
 
@@ -43,8 +45,8 @@ public class FakeHfpManager {
 
     private Map<String, SimulatedBluetoothDevice> mDeviceMap = new HashMap<>();
     private List<BluetoothDevice> mDeviceList;
-    private MutableLiveData<Integer> mBluetoothStateLiveData;
-    private MutableLiveData<Set<BluetoothDevice>> mBluetoothPairListLiveData;
+    private LiveData<Integer> mBluetoothStateLiveData;
+    private LiveData<Set<BluetoothDevice>> mBluetoothPairListLiveData;
     private MutableLiveData<List<BluetoothDevice>> mHfpDeviceListLiveData;
 
     private final CallLogDataHandler mCallLogDataHandler;
@@ -57,9 +59,9 @@ public class FakeHfpManager {
         mContactDataHandler = contactDataHandler;
 
         mDeviceList = new ArrayList<>();
-        mBluetoothStateLiveData = new MutableLiveData<>(/* enabled */2);
-        mBluetoothPairListLiveData = new MutableLiveData<>(Collections.emptySet());
-        mHfpDeviceListLiveData = new MutableLiveData<>(mDeviceList);
+        mBluetoothStateLiveData = LiveDataFunctions.dataOf(/* enabled */2);
+        mBluetoothPairListLiveData = LiveDataFunctions.dataOf(Collections.emptySet());
+        mHfpDeviceListLiveData = LiveDataFunctions.dataOf(mDeviceList);
     }
 
     /**
@@ -70,7 +72,7 @@ public class FakeHfpManager {
         device.connect();
         mDeviceMap.put(String.valueOf(mDeviceMap.size()), device);
         mDeviceList.add(device.getBluetoothDevice());
-        mHfpDeviceListLiveData.postValue(mDeviceList);
+        mHfpDeviceListLiveData.setValue(mDeviceList);
     }
 
     /**
@@ -80,7 +82,7 @@ public class FakeHfpManager {
         SimulatedBluetoothDevice simulatedBluetoothDevice = mDeviceMap.remove(id);
         mDeviceList.remove(simulatedBluetoothDevice.getBluetoothDevice());
         simulatedBluetoothDevice.disconnect();
-        mHfpDeviceListLiveData.postValue(mDeviceList);
+        mHfpDeviceListLiveData.setValue(mDeviceList);
     }
 
     private SimulatedBluetoothDevice prepareNewDevice() {
@@ -92,15 +94,15 @@ public class FakeHfpManager {
         return simulatedBluetoothDevice;
     }
 
-    public MutableLiveData<Integer> getBluetoothStateLiveData() {
+    public LiveData<Integer> getBluetoothStateLiveData() {
         return mBluetoothStateLiveData;
     }
 
-    public MutableLiveData<Set<BluetoothDevice>> getBluetoothPairListLiveData() {
+    public LiveData<Set<BluetoothDevice>> getBluetoothPairListLiveData() {
         return mBluetoothPairListLiveData;
     }
 
-    public MutableLiveData<List<BluetoothDevice>> getHfpDeviceListLiveData() {
+    public LiveData<List<BluetoothDevice>> getHfpDeviceListLiveData() {
         return mHfpDeviceListLiveData;
     }
 }

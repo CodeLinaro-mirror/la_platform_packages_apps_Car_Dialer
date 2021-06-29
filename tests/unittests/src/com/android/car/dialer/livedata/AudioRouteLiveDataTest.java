@@ -19,12 +19,14 @@ package com.android.car.dialer.livedata;
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import android.telecom.Call;
+import android.bluetooth.BluetoothHeadsetClient;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.IntentFilter;
 import android.telecom.CallAudioState;
 
 import androidx.lifecycle.Observer;
@@ -36,57 +38,68 @@ import com.android.car.dialer.telecom.UiCallManager;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 @RunWith(AndroidJUnit4.class)
 public class AudioRouteLiveDataTest {
     private AudioRouteLiveData mAudioRouteLiveData;
-    private CallDetailLiveData mCallDetailLiveData;
+
+    @Mock
+    private Context mMockContext;
 
     @Mock
     private Observer<Integer> mMockObserver;
     @Mock
     private UiCallManager mMockUiCallManager;
-    @Mock
-    Call mMockCall;
-    @Mock
-    Call.Details mMockCallDetails;
 
+    @Captor
+    private ArgumentCaptor<IntentFilter> mIntentFilterCaptor;
+    @Captor
+    private ArgumentCaptor<BroadcastReceiver> mReceiverCaptor;
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
-        when(mMockCall.getDetails()).thenReturn(mMockCallDetails);
-        mCallDetailLiveData = new CallDetailLiveData();
-
-        when(mMockUiCallManager.getAudioRoute(anyInt())).thenReturn(CallAudioState.ROUTE_EARPIECE);
-
-        mAudioRouteLiveData = new AudioRouteLiveData(mCallDetailLiveData, mMockUiCallManager);
+        when(mMockUiCallManager.getAudioRoute(any())).thenReturn(CallAudioState.ROUTE_EARPIECE);
+        mAudioRouteLiveData = new AudioRouteLiveData(
+                mMockContext, new CallDetailLiveData(), mMockUiCallManager);
     }
 
     @Test
     @UiThreadTest
-    public void onActive_updateAudioRoute() {
+    public void testOnActive() {
         verify(mMockObserver, never()).onChanged(any());
-
-        mCallDetailLiveData.setTelecomCall(mMockCall);
         mAudioRouteLiveData.observeForever(mMockObserver);
+        verify(mMockContext).registerReceiver(any(), mIntentFilterCaptor.capture());
 
+        assertThat(mIntentFilterCaptor.getValue().getAction(0))
+                .isEqualTo(BluetoothHeadsetClient.ACTION_AUDIO_STATE_CHANGED);
         verify(mMockObserver).onChanged(CallAudioState.ROUTE_EARPIECE);
     }
 
     @Test
     @UiThreadTest
-    public void callDetailChange_updateAudioRoute() {
-        mCallDetailLiveData.setTelecomCall(mMockCall);
+    public void testBluetoothHfpStateChanged_changeToBluetoothRoute() {
         mAudioRouteLiveData.observeForever(mMockObserver);
         assertThat(mAudioRouteLiveData.getValue()).isEqualTo(CallAudioState.ROUTE_EARPIECE);
 
-        when(mMockUiCallManager.getAudioRoute(anyInt())).thenReturn(CallAudioState.ROUTE_BLUETOOTH);
-        mCallDetailLiveData.setTelecomCall(mMockCall);
+        when(mMockUiCallManager.getAudioRoute(any())).thenReturn(CallAudioState.ROUTE_BLUETOOTH);
 
         verify(mMockObserver).onChanged(CallAudioState.ROUTE_BLUETOOTH);
         assertThat(mAudioRouteLiveData.getValue()).isEqualTo(CallAudioState.ROUTE_BLUETOOTH);
+    }
+
+    @Test
+    @UiThreadTest
+    public void testOnInactive() {
+        verify(mMockObserver, never()).onChanged(any());
+        mAudioRouteLiveData.observeForever(mMockObserver);
+        verify(mMockContext).registerReceiver(mReceiverCaptor.capture(), any());
+
+        mAudioRouteLiveData.removeObserver(mMockObserver);
+        verify(mMockContext).unregisterReceiver(mReceiverCaptor.getValue());
     }
 }

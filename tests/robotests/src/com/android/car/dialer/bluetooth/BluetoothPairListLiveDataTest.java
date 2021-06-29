@@ -24,19 +24,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.robolectric.Shadows.shadowOf;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.LifecycleRegistry;
-import androidx.lifecycle.Observer;
-import androidx.test.annotation.UiThreadTest;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
+
+import com.android.car.dialer.CarDialerRobolectricTestRunner;
+import com.android.car.dialer.LiveDataObserver;
+import com.android.car.dialer.testutils.BroadcastReceiverVerifier;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -45,88 +46,97 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.shadows.ShadowBluetoothAdapter;
 
 import java.util.HashSet;
 import java.util.Set;
 
-@RunWith(AndroidJUnit4.class)
+@RunWith(CarDialerRobolectricTestRunner.class)
 public class BluetoothPairListLiveDataTest {
     private static final String INTENT_ACTION = BluetoothDevice.ACTION_BOND_STATE_CHANGED;
+    private static final String BLUETOOTH_DEVICE_ALIAS_1 = "BluetoothDevice 1";
+    private static final String BLUETOOTH_DEVICE_ALIAS_2 = "BluetoothDevice 2";
 
     private BluetoothPairListLiveData mBluetoothPairListLiveData;
-    @Mock
-    private BluetoothAdapter mBluetoothAdapter;
     private LifecycleRegistry mLifecycleRegistry;
+    private BroadcastReceiverVerifier mReceiverVerifier;
     @Mock
     private LifecycleOwner mMockLifecycleOwner;
     @Mock
-    private Observer<Set<BluetoothDevice>> mMockObserver;
+    private LiveDataObserver<Set<BluetoothDevice>> mMockObserver;
     @Captor
     private ArgumentCaptor<Set<BluetoothDevice>> mValueCaptor;
-    @Captor
-    private ArgumentCaptor<BroadcastReceiver> mReceiverCaptor;
-    @Mock
-    private Context mContext;
 
     @Before
     public void setup() {
         MockitoAnnotations.initMocks(this);
 
-        mBluetoothPairListLiveData = new BluetoothPairListLiveData(mContext, mBluetoothAdapter);
+        mBluetoothPairListLiveData = new BluetoothPairListLiveData(RuntimeEnvironment.application,
+                BluetoothAdapter.getDefaultAdapter());
         mLifecycleRegistry = new LifecycleRegistry(mMockLifecycleOwner);
         when(mMockLifecycleOwner.getLifecycle()).thenReturn(mLifecycleRegistry);
+
+        mReceiverVerifier = new BroadcastReceiverVerifier(RuntimeEnvironment.application);
     }
 
     @Test
-    @UiThreadTest
     public void testOnActive() {
         mBluetoothPairListLiveData.observe(mMockLifecycleOwner,
                 (value) -> mMockObserver.onChanged(value));
         verify(mMockObserver, never()).onChanged(any());
 
         mLifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START);
-        verify(mContext).registerReceiver(mReceiverCaptor.capture(), any());
+        mReceiverVerifier.verifyReceiverRegistered(INTENT_ACTION);
         verify(mMockObserver).onChanged(any());
     }
 
     @Test
-    @UiThreadTest
     public void testOnBluetoothConnected() {
         // Set up Bluetooth devices
+        BluetoothDevice bluetoothDevice1 = mock(BluetoothDevice.class);
+        bluetoothDevice1.setAlias(BLUETOOTH_DEVICE_ALIAS_1);
         Set<BluetoothDevice> bondedDevices = new HashSet<BluetoothDevice>();
-        bondedDevices.add(mock(BluetoothDevice.class));
-        when(mBluetoothAdapter.getBondedDevices()).thenReturn(bondedDevices);
+        bondedDevices.add(bluetoothDevice1);
+        ShadowBluetoothAdapter shadowBluetoothAdapter = shadowOf(
+                BluetoothAdapter.getDefaultAdapter());
+        shadowBluetoothAdapter.setBondedDevices(bondedDevices);
+
         doNothing().when(mMockObserver).onChanged(mValueCaptor.capture());
         mBluetoothPairListLiveData.observe(mMockLifecycleOwner,
                 (value) -> mMockObserver.onChanged(value));
         mLifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START);
         verifyBondedDevices(bondedDevices);
-        verify(mContext).registerReceiver(mReceiverCaptor.capture(), any());
 
         // Update Bluetooth devices
-        bondedDevices.add(mock(BluetoothDevice.class));
-        Intent intent = new Intent();
-        intent.setAction(INTENT_ACTION);
-        mReceiverCaptor.getValue().onReceive(mContext, intent);
+        BluetoothDevice bluetoothDevice2 = mock(BluetoothDevice.class);
+        bluetoothDevice2.setAlias(BLUETOOTH_DEVICE_ALIAS_2);
+        bondedDevices.add(bluetoothDevice2);
+        shadowBluetoothAdapter.setBondedDevices(bondedDevices);
+
+        mReceiverVerifier.getBroadcastReceiverFor(INTENT_ACTION)
+                .onReceive(mock(Context.class), mock(Intent.class));
         verifyBondedDevices(bondedDevices);
     }
 
     @Test
-    @UiThreadTest
     public void testOnInactiveUnregister() {
         mBluetoothPairListLiveData.observe(mMockLifecycleOwner,
                 value -> mMockObserver.onChanged(value));
-        mLifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START);
-        verify(mContext).registerReceiver(mReceiverCaptor.capture(), any());
+        int preNumber = mReceiverVerifier.getReceiverNumber();
 
+        mLifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START);
         mLifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY);
-        verify(mContext).unregisterReceiver(mReceiverCaptor.getValue());
+
+        assertThat(mReceiverVerifier.getReceiverNumber()).isEqualTo(preNumber);
     }
 
     private void verifyBondedDevices(Set bondedDevices) {
         // Verify Bonded Devices for BluetoothAdapter
-        assertThat(mBluetoothAdapter.getBondedDevices().containsAll(bondedDevices)).isTrue();
-        assertThat(mBluetoothAdapter.getBondedDevices().size()).isEqualTo(bondedDevices.size());
+        assertThat(BluetoothAdapter.getDefaultAdapter().getBondedDevices().containsAll(
+                bondedDevices)).isTrue();
+        assertThat(BluetoothAdapter.getDefaultAdapter().getBondedDevices().size()).isEqualTo(
+                bondedDevices.size());
         // Verify Bonded Devices for LiveData
         assertThat(mBluetoothPairListLiveData.getValue().containsAll(bondedDevices)).isTrue();
         assertThat(mBluetoothPairListLiveData.getValue().size()).isEqualTo(bondedDevices.size());
