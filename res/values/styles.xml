@@ -60,6 +60,7 @@
     <style name="DialpadPrimaryButton">
         <item name="android:layout_width">@dimen/fab_button_size</item>
         <item name="android:layout_height">@dimen/fab_button_size</item>
+        <item name="android:background">@drawable/dialer_ripple_background</item>
         <item name="android:elevation">@dimen/call_fab_elevation</item>
         <item name="android:scaleType">center</item>
     </style>
@@ -108,6 +109,11 @@
     <!-- Contact results -->
     <style name="TextAppearance.ContactResultTitle" parent="TextAppearance.Body1">
         <item name="android:textColor">?android:attr/textColorPrimary</item>
+    </style>
+
+    <!-- Dialpad type down list query special style -->
+    <style name="TextAppearance.TypeDownListSpan" parent="TextAppearance.Body3">
+        <item name="android:textStyle">bold</item>
     </style>
 
     <!-- Add to favorite flow dialog -->
