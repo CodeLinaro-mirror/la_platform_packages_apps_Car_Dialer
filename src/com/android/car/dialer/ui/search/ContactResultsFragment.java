@@ -19,6 +19,7 @@ package com.android.car.dialer.ui.search;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -67,6 +68,8 @@ public class ContactResultsFragment extends DialerListBaseFragment implements
 
     private RecyclerView.OnScrollListener mOnScrollChangeListener;
     private ToolbarController mToolbar;
+    @Nullable
+    private RecyclerView mToolbarSearchResultsView;
 
     private LifeCycleObserverUxrContentLimiter mUxrContentLimiter;
 
@@ -111,24 +114,27 @@ public class ContactResultsFragment extends DialerListBaseFragment implements
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 if (dy != 0) {
-                    // Clear the focus to dismiss the keyboard.
+                    // Clear the focus to dismiss the keyboard in touch mode.
                     View focusedView = getActivity().getCurrentFocus();
-                    if (focusedView != null) {
+                    if (focusedView != null && focusedView.isInTouchMode()) {
                         focusedView.clearFocus();
                     }
                 }
             }
         };
         getRecyclerView().addOnScrollListener(mOnScrollChangeListener);
+        if (mToolbarSearchResultsView != null) {
+            mToolbarSearchResultsView.setAdapter(mAdapter);
+        }
 
         mUxrContentLimiter.setAdapter(mAdapter);
     }
 
     @Override
     public void onDestroyView() {
-        super.onDestroyView();
         getRecyclerView().removeOnScrollListener(mOnScrollChangeListener);
         mToolbar.unregisterOnSearchListener(this);
+        super.onDestroyView();
     }
 
     @Override
@@ -138,6 +144,18 @@ public class ContactResultsFragment extends DialerListBaseFragment implements
         mToolbar.registerOnSearchListener(this);
         mToolbar.setSearchIcon(R.drawable.ic_app_icon);
         setSearchQuery(mContactResultsViewModel.getSearchQuery());
+
+        if (mToolbar.canShowSearchResultsView()) {
+            mToolbarSearchResultsView = new RecyclerView(getContext());
+            ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            mToolbarSearchResultsView.setLayoutParams(params);
+            mToolbarSearchResultsView.setLayoutManager(createLayoutManager());
+            mToolbarSearchResultsView.setAdapter(mAdapter);
+            mToolbarSearchResultsView.setBackground(
+                    getContext().getDrawable(R.drawable.car_ui_ime_wide_screen_background));
+            mToolbar.setSearchResultsView(mToolbarSearchResultsView);
+        }
     }
 
     /** Sets the search query that should be used to filter contacts. */
